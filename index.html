@@ -1,0 +1,3930 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Un formulario con datos del personal no debe aparecer en buscadores. -->
+  <meta name="robots" content="noindex, nofollow">
+  <!-- La pagina solo puede cargar las fuentes y hablar con Apps Script: si
+       alguien lograra inyectarle codigo, no tendria a donde mandar los datos. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
+  <title>Actualización de Datos del Personal - UNIMETA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&amp;display=swap">
+  <style>
+/* ============================================================
+   Styles.html
+   Actualizacion de Datos del Personal - UNIMETA
+
+   Sistema visual tomado del diseno "Formulario UNIMETA":
+   superficies planas, esquinas rectas, sin sombras, rojo
+   institucional como unico acento y tipografia Archivo.
+
+   TODOS los colores estan centralizados en el bloque :root.
+   Para cambiar la identidad visual basta con editar esas
+   variables: ninguna regla de mas abajo usa un color literal.
+   ============================================================ */
+
+:root {
+  /* --- Colores institucionales, tomados del logotipo UNIMETA --- */
+  --color-primario:        #D81824;   /* rojo del logotipo */
+  --color-primario-oscuro: #A8111B;   /* rojo para estados hover y textos */
+  --color-primario-suave:  #FDEEEF;   /* tinte de fondo */
+  --color-primario-borde:  #F2C9CC;   /* borde sobre el tinte */
+  --color-dorado:          #FCCC3C;   /* dorado del escudo (reservado) */
+  --color-azul:            #243C84;   /* azul del escudo: foco y notas */
+  --color-azul-suave:      #F1F3F9;   /* fondo de las notas informativas */
+
+  /* --- Neutros --- */
+  --color-texto:           #1E2024;
+  --color-texto-medio:     #3A3E45;
+  --color-texto-suave:     #5C6169;
+  --color-texto-tenue:     #8A8F96;
+  --color-borde:           #E0E2E6;
+  --color-borde-fuerte:    #B9BDC4;
+  --color-riel:            #DCDEE2;   /* celdas vacias del progreso */
+  --color-fondo:           #F3F2F2;   /* fondo de pagina */
+  --color-superficie:      #FFFFFF;
+  --color-superficie-2:    #F8F8F8;   /* bloques embebidos */
+
+  /* --- Estados --- */
+  --color-error:           #A8111B;
+  --color-error-fondo:     #FDEEEF;
+  --color-exito:           #1B5E20;
+  --color-exito-fondo:     #EDF6EE;
+  --color-aviso:           #8A6100;
+  --color-aviso-fondo:     #FFF6E0;
+
+  /* --- Medidas --- */
+  --ancho-max:             1140px;
+  --ancho-riel:            208px;
+  --relleno-tarjeta:       28px;
+  --transicion:            160ms ease;
+
+  /* --- Tipografia --- */
+  --tipo: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--tipo);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--color-primario-oscuro); text-underline-offset: 3px; }
+a:hover { color: var(--color-primario); }
+
+::selection { background: var(--color-primario-suave); }
+
+/* Foco visible unico para toda la aplicacion */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-azul);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   ENCABEZADO Y PROGRESO
+   ============================================================ */
+
+/* El encabezado es blanco: el logotipo es rojo sobre transparente y el
+   escudo es multicolor, asi que sobre un fondo de color perderia nitidez. */
+.encabezado { background: var(--color-superficie); color: var(--color-texto); }
+
+.encabezado-interno {
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.logo { height: 60px; width: auto; flex: none; }
+
+.encabezado-textos {
+  border-left: 1px solid var(--color-borde);
+  padding-left: 22px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.encabezado h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  color: var(--color-texto);
+}
+
+.encabezado p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+/* Franja institucional bajo el encabezado */
+.franja { height: 4px; background: var(--color-primario); }
+
+.progreso-zona {
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.progreso-interno {
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  padding: 12px 24px 14px;
+}
+
+.progreso-etiquetas {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.progreso-etiquetas span:first-child {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.progreso-etiquetas span:last-child {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--color-texto);
+}
+
+/* Barra segmentada: una celda por paso */
+.progreso-barra {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+}
+
+.progreso-celda {
+  height: 6px;
+  background: var(--color-riel);
+  transition: background var(--transicion);
+}
+
+.progreso-celda.cumplida { background: var(--color-primario); }
+
+/* ============================================================
+   ESTRUCTURA: riel de secciones + columna principal
+   ============================================================ */
+
+main {
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+  display: flex;
+  align-items: flex-start;
+  gap: 36px;
+}
+
+.columna-principal { flex: 1 1 auto; min-width: 0; }
+
+.riel {
+  flex: 0 0 var(--ancho-riel);
+  width: var(--ancho-riel);
+  position: sticky;
+  top: 96px;
+}
+
+.riel-titulo {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.riel ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.riel li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 9px 0 9px 12px;
+  border-left: 2px solid var(--color-borde);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-texto-suave);
+  transition: border-color var(--transicion), color var(--transicion);
+}
+
+.riel li .riel-num {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--color-texto-tenue);
+  flex: none;
+}
+
+.riel li.actual {
+  border-left-color: var(--color-primario);
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.riel li.cumplida { color: var(--color-texto-medio); }
+
+/* Tarjeta: superficie plana con remate rojo superior */
+.tarjeta {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-top: 3px solid var(--color-primario);
+  padding: var(--relleno-tarjeta);
+  margin-bottom: 18px;
+}
+
+.paso { display: none; }
+.paso.activo { display: block; animation: aparecer 200ms ease; }
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.paso-titulo {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+  color: var(--color-texto);
+}
+
+.paso-descripcion {
+  margin: 0 0 20px;
+  font-size: 15px;
+  color: var(--color-texto-suave);
+  max-width: 64ch;
+  text-wrap: pretty;
+}
+
+/* Autocompletado propio para ciudades e instituciones. */
+.campo-autocompletar { position: relative; }
+.lista-autocompletar {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 230px; overflow-y: auto; margin: 0; padding: 6px; list-style: none;
+  background: #fff; border: 1px solid var(--color-borde); border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(23, 31, 45, .14);
+}
+.lista-autocompletar[hidden] { display: none; }
+.opcion-autocompletar {
+  padding: 10px 12px; border-radius: 5px; color: var(--color-texto); cursor: pointer;
+}
+.opcion-autocompletar:hover,
+.opcion-autocompletar.activa {
+  background: var(--color-superficie-2); color: var(--color-primario);
+}
+
+/* Select personalizado: evita el menú nativo del navegador. */
+.selector-personalizado { position: relative; }
+.selector-nativo-oculto {
+  position: absolute !important; width: 1px !important; height: 1px !important;
+  opacity: 0 !important; pointer-events: none !important;
+}
+.selector-boton {
+  width: 100%; min-height: 42px; padding: 9px 38px 9px 12px;
+  border: 1px solid var(--color-borde); border-radius: 4px; background: #fff;
+  color: var(--color-texto); font: inherit; text-align: left; cursor: pointer;
+  position: relative;
+}
+.selector-boton::after {
+  content: ''; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px;
+  border-right: 2px solid var(--color-texto-medio); border-bottom: 2px solid var(--color-texto-medio);
+  transform: translateY(-65%) rotate(45deg); transition: transform .18s ease;
+}
+.selector-personalizado.abierto .selector-boton::after { transform: translateY(-25%) rotate(225deg); }
+.selector-boton:focus { outline: 2px solid rgba(32, 74, 135, .18); border-color: var(--color-azul); }
+.selector-boton.placeholder { color: var(--color-texto-suave); }
+.selector-lista {
+  position: absolute; z-index: 45; left: 0; right: 0; top: calc(100% + 5px);
+  max-height: 240px; overflow-y: auto; margin: 0; padding: 6px; list-style: none;
+  background: #fff; border: 1px solid var(--color-borde); border-radius: 7px;
+  box-shadow: 0 10px 24px rgba(23, 31, 45, .15);
+}
+.selector-lista[hidden] { display: none; }
+.selector-opcion { padding: 10px 12px; border-radius: 4px; cursor: pointer; color: var(--color-texto); }
+.selector-opcion:hover, .selector-opcion.activa { background: var(--color-superficie-2); }
+.selector-opcion.seleccionada { background: var(--color-azul-suave); color: var(--color-azul); font-weight: 600; }
+.selector-opcion.deshabilitada { color: var(--color-texto-suave); cursor: default; }
+
+/* Párrafo introductorio de la autorización */
+#introduccion {
+  width: 100%;
+  max-width: none;
+  text-align: left;
+}
+
+.subtitulo {
+  margin: 28px 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.nota-pie {
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  color: var(--color-texto-suave);
+}
+
+/* Tira de datos del paso 1 */
+.tira-datos {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--color-borde);
+  margin-bottom: 24px;
+}
+
+.tira-celda {
+  flex: 1 1 180px;
+  padding: 14px 16px;
+  border-right: 1px solid var(--color-borde);
+}
+
+.tira-celda:last-child { border-right: 0; }
+
+.tira-celda p:first-child {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.tira-celda p:last-child {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Separador previo a la navegacion */
+.separador { height: 2px; background: var(--color-borde); margin: 26px 0 20px; }
+
+/* ============================================================
+   CAMPOS
+   ============================================================ */
+
+.campo { margin-bottom: 20px; }
+
+.rejilla,
+.rejilla-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 24px;
+}
+
+.rejilla-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+.ancho-total { grid-column: 1 / -1; }
+
+label, .etiqueta {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--color-texto);
+}
+
+.obligatorio { color: var(--color-primario); margin-left: 2px; }
+
+.opcional {
+  color: var(--color-texto-suave);
+  font-weight: 400;
+  font-size: 12.5px;
+  margin-left: 4px;
+}
+
+.ayuda {
+  font-size: 12.5px;
+  color: var(--color-texto-suave);
+  margin-top: 6px;
+}
+
+/* Campo que llena el sistema y la persona no puede cambiar. */
+.correo-acciones {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.correo-acciones button { white-space: nowrap; }
+
+.verificacion-codigo {
+  margin-top: 14px;
+  padding: 16px;
+  background: var(--color-superficie-2);
+  border: 1px solid var(--color-borde);
+}
+
+.estado-verificacion {
+  min-height: 1.3em;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--color-texto-suave);
+}
+
+.estado-verificacion.exito { color: var(--color-exito); font-weight: 600; }
+.estado-verificacion.error { color: var(--color-error); font-weight: 600; }
+
+.campo.correo-verificado input[type="email"] {
+  border-color: var(--color-exito);
+  background: var(--color-exito-fondo);
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="email"],
+input[type="tel"],
+select,
+textarea {
+  width: 100%;
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-texto);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde-fuerte);
+  border-radius: 0;
+  transition: border-color var(--transicion), box-shadow var(--transicion);
+}
+
+textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) { border-color: var(--color-texto); }
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-azul);
+  box-shadow: inset 0 0 0 1px var(--color-azul);
+}
+
+input:disabled, select:disabled {
+  background: var(--color-superficie-2);
+  color: var(--color-texto-suave);
+  cursor: not-allowed;
+  border-color: var(--color-borde);
+}
+
+/* Campo con error: barra roja a la izquierda, como en el diseno */
+.con-error {
+  border-left: 3px solid var(--color-primario);
+  padding-left: 12px;
+}
+
+.con-error input,
+.con-error select,
+.con-error textarea {
+  border-color: var(--color-primario);
+  background: var(--color-error-fondo);
+}
+
+.mensaje-error {
+  display: none;
+  color: var(--color-error);
+  font-size: 12.5px;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.con-error .mensaje-error { display: block; }
+
+/* Campo validado correctamente */
+.con-exito input,
+.con-exito select,
+.con-exito textarea { border-color: var(--color-exito); }
+
+.ayuda-viva { margin-top: 6px; font-size: 12.5px; color: var(--color-texto-suave); }
+.con-exito .ayuda-viva { color: var(--color-exito); }
+.con-error .ayuda-viva { color: var(--color-error); }
+
+/* Resumen de errores en la cabecera de la tarjeta */
+.resumen-errores {
+  display: none;
+  margin: calc(var(--relleno-tarjeta) * -1) calc(var(--relleno-tarjeta) * -1) var(--relleno-tarjeta);
+  padding: 18px var(--relleno-tarjeta);
+  background: var(--color-primario-suave);
+  border-bottom: 1px solid var(--color-primario-borde);
+}
+
+.resumen-errores.visible { display: block; }
+
+.resumen-errores h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--color-error);
+}
+
+.resumen-errores p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+.resumen-errores ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.resumen-errores li { font-size: 12px; }
+
+.resumen-errores button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-error);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.resumen-errores button:hover { color: var(--color-primario); }
+
+/* ============================================================
+   OPCIONES (radio y casillas)
+   ============================================================ */
+
+fieldset { border: 0; margin: 0 0 20px; padding: 0; }
+
+legend {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 0;
+  color: var(--color-texto);
+}
+
+.opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.opciones-columna { flex-direction: column; gap: 8px; max-width: 560px; }
+
+.opcion {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--color-borde-fuerte);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  margin: 0;
+  background: var(--color-superficie);
+  transition: border-color var(--transicion), background var(--transicion), box-shadow var(--transicion);
+}
+
+.opcion:hover { border-color: var(--color-texto); }
+
+.opcion input { margin: 2px 0 0; flex-shrink: 0; accent-color: var(--color-primario); }
+
+/* El borde interior simula los 2px del diseno sin desplazar el contenido */
+.opcion.marcada {
+  border-color: var(--color-primario);
+  box-shadow: inset 0 0 0 1px var(--color-primario);
+  background: var(--color-primario-suave);
+  font-weight: 600;
+}
+
+.rejilla-opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+/* ============================================================
+   BLOQUES CONDICIONALES
+   ============================================================ */
+
+.condicional { display: none; }
+
+.condicional.visible {
+  display: block;
+  animation: desplegar 180ms ease;
+  border-left: 2px solid var(--color-borde);
+  padding-left: 16px;
+  margin: 4px 0 20px;
+}
+
+@keyframes desplegar {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ============================================================
+   LISTAS DINAMICAS (hijos, contactos, titulos)
+   ============================================================ */
+
+.lista-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.contador {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-error);
+  background: var(--color-primario-suave);
+  padding: 5px 10px;
+}
+
+.item {
+  border: 1px solid var(--color-borde);
+  border-left: 3px solid var(--color-primario);
+  padding: 18px;
+  margin-bottom: 12px;
+  background: var(--color-superficie);
+  animation: aparecer 180ms ease;
+}
+
+.item-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.item-titulo {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -.01em;
+  color: var(--color-texto);
+}
+
+.vacio {
+  padding: 26px 18px;
+  color: var(--color-texto-suave);
+  font-size: 13px;
+  border: 1px dashed var(--color-borde-fuerte);
+  background: var(--color-superficie-2);
+  text-align: center;
+}
+
+/* ============================================================
+   BOTONES
+   ============================================================ */
+
+button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0;
+  border: 1px solid transparent;
+  padding: 12px 22px;
+  cursor: pointer;
+  transition: background var(--transicion), border-color var(--transicion), color var(--transicion);
+}
+
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primario {
+  background: var(--color-primario);
+  color: var(--color-superficie);
+  border-color: var(--color-primario);
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.btn-primario:hover:not(:disabled) {
+  background: var(--color-primario-oscuro);
+  border-color: var(--color-primario-oscuro);
+}
+
+.btn-secundario {
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  border-color: var(--color-borde-fuerte);
+}
+.btn-secundario:hover:not(:disabled) { border-color: var(--color-texto); }
+
+.btn-texto {
+  background: transparent;
+  color: var(--color-texto-suave);
+  border-color: transparent;
+  padding: 12px 14px;
+}
+.btn-texto:hover:not(:disabled) { color: var(--color-error); }
+
+.btn-agregar {
+  background: var(--color-superficie);
+  color: var(--color-error);
+  border: 1px solid var(--color-primario-borde);
+  padding: 11px 18px;
+}
+.btn-agregar:hover:not(:disabled) {
+  background: var(--color-primario-suave);
+  border-color: var(--color-primario);
+}
+
+.btn-quitar {
+  background: transparent;
+  color: var(--color-error);
+  border-color: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+.btn-quitar:hover:not(:disabled) { background: var(--color-primario-suave); }
+
+.navegacion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 2px solid var(--color-borde);
+}
+
+.navegacion-derecha { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ============================================================
+   AVISOS
+   ============================================================ */
+
+.aviso {
+  padding: 12px 15px;
+  font-size: 13px;
+  color: var(--color-texto-medio);
+  margin-bottom: 18px;
+  border-left: 3px solid;
+}
+
+.aviso-info    { background: var(--color-azul-suave);    border-color: var(--color-azul); }
+.aviso-alerta  { background: var(--color-aviso-fondo);   border-color: var(--color-aviso); color: var(--color-aviso); }
+.aviso-error   { background: var(--color-error-fondo);   border-color: var(--color-error); color: var(--color-error); }
+.aviso-exito   { background: var(--color-exito-fondo);   border-color: var(--color-exito); color: var(--color-exito); }
+
+.aviso-acciones { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.aviso-registro-unico { margin-bottom: 18px; }
+
+/* Ventana de confirmación propia. */
+.modal-fondo {
+  position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center;
+  padding: 20px; background: rgba(21, 27, 38, .58); backdrop-filter: blur(2px);
+}
+.modal-fondo[hidden] { display: none; }
+.modal-dialogo {
+  position: relative; width: min(440px, 100%); padding: 28px;
+  background: #fff; border-top: 3px solid var(--color-primario); border-radius: 9px;
+  box-shadow: 0 24px 60px rgba(10, 18, 31, .25); animation: aparecerModal .18s ease-out;
+}
+@keyframes aparecerModal {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.modal-icono {
+  display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 16px;
+  border-radius: 50%; background: var(--color-error-fondo); color: var(--color-primario);
+  font-size: 22px; font-weight: 800;
+}
+.modal-dialogo h2 { margin: 0 34px 8px 0; font-size: 21px; color: var(--color-texto); }
+.modal-dialogo p { margin: 0; color: var(--color-texto-medio); line-height: 1.55; }
+.modal-cerrar {
+  position: absolute; top: 13px; right: 14px; width: 34px; height: 34px;
+  border: 0; border-radius: 50%; background: transparent; color: var(--color-texto-suave);
+  font-size: 25px; line-height: 1; cursor: pointer;
+}
+.modal-cerrar:hover { background: var(--color-superficie-2); color: var(--color-texto); }
+.modal-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.modal-acciones button { min-width: 105px; }
+body.modal-abierto { overflow: hidden; }
+
+@media (max-width: 560px) {
+}
+
+.texto-legal {
+  background: var(--color-superficie-2);
+  border: 1px solid var(--color-borde);
+  padding: 18px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--color-texto-medio);
+  margin-bottom: 24px;
+}
+
+.texto-legal p { margin: 0; }
+
+/* ============================================================
+   RESUMEN FINAL
+   ============================================================ */
+
+.resumen-bloque {
+  border: 1px solid var(--color-borde);
+  margin-bottom: 14px;
+}
+
+.resumen-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--color-superficie-2);
+  border-bottom: 1px solid var(--color-borde);
+  padding: 12px 16px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -.01em;
+  color: var(--color-texto);
+}
+
+.resumen-cuerpo { padding: 6px 16px 14px; }
+
+.resumen-fila {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-borde);
+  font-size: 13px;
+}
+
+.resumen-fila:last-child { border-bottom: 0; }
+.resumen-etiqueta { color: var(--color-texto-suave); }
+.resumen-valor { font-weight: 600; word-break: break-word; }
+.resumen-vacio { color: var(--color-texto-tenue); font-style: italic; font-weight: 400; }
+
+.btn-corregir {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde-fuerte);
+  color: var(--color-texto);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  flex-shrink: 0;
+}
+.btn-corregir:hover { border-color: var(--color-primario); color: var(--color-error); }
+
+/* ============================================================
+   CARGA Y CIERRE
+   ============================================================ */
+
+.capa-carga {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(243, 242, 242, .95);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+  text-align: center;
+  padding: 24px;
+}
+
+.capa-carga.visible { display: flex; }
+
+.girador {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--color-borde);
+  border-top-color: var(--color-primario);
+  border-radius: 50%;
+  animation: girar 800ms linear infinite;
+}
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+.capa-carga p { color: var(--color-texto-suave); font-size: 14px; margin: 0; }
+
+/* La tarjeta final trae su propio ritmo: la tira de datos va a sangre
+   contra los bordes, asi que el relleno lo ponen los bloques internos. */
+.pantalla-final { padding: 0; }
+
+.final-cabecera { padding: var(--relleno-tarjeta) var(--relleno-tarjeta) 26px; }
+
+.final-rotulo {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-error);
+}
+
+.pantalla-final h2 {
+  margin: 0 0 14px;
+  font-size: clamp(28px, 4.2vw, 40px);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+  color: var(--color-texto);
+  max-width: 15ch;
+}
+
+.final-cabecera p:last-child {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-texto-suave);
+  max-width: 48ch;
+  text-wrap: pretty;
+}
+
+/* Constancia del envio: radicado, fecha y correo */
+.final-datos {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--color-borde);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.final-dato {
+  flex: 1 1 200px;
+  padding: 18px var(--relleno-tarjeta);
+  border-right: 1px solid var(--color-borde);
+  min-width: 0;
+}
+
+.final-dato:last-child { border-right: 0; }
+
+.final-dato p:first-child {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.final-dato p:last-child {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--color-texto);
+  overflow-wrap: anywhere;
+}
+
+.final-cuerpo { padding: 26px var(--relleno-tarjeta) var(--relleno-tarjeta); }
+
+.final-seccion {
+  margin: 0 0 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-borde);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.final-pasos { list-style: none; margin: 0; padding: 0; }
+
+.final-pasos li {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-borde);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-texto-medio);
+}
+
+.final-num {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+/* ============================================================
+   ACCESIBILIDAD
+   ============================================================ */
+
+.solo-lectores {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.saltar-al-contenido {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--color-primario);
+  color: var(--color-superficie);
+  padding: 10px 18px;
+  z-index: 1100;
+  font-weight: 600;
+  text-decoration: none;
+}
+.saltar-al-contenido:focus { left: 0; color: var(--color-superficie); }
+
+/* ============================================================
+   RESPONSIVO
+   ============================================================ */
+
+/* El riel lateral solo cabe a partir de 900px, igual que en el diseno */
+@media (max-width: 899px) {
+  .riel { display: none; }
+  main { gap: 0; }
+}
+
+@media (max-width: 720px) {
+  :root { --relleno-tarjeta: 20px; }
+  main { padding: 18px 14px 72px; }
+  .encabezado-interno { padding: 16px 14px; gap: 12px; }
+  .logo { height: 40px; max-width: 140px; }
+  .encabezado-textos { padding-left: 12px; }
+  .encabezado h1 { font-size: 18px; overflow-wrap: anywhere; }
+  .progreso-interno { padding: 10px 14px 12px; }
+  .paso-titulo { font-size: 21px; }
+  .paso-descripcion { font-size: 14px; }
+  .resumen-fila { grid-template-columns: 1fr; gap: 2px; padding: 9px 0; }
+  .resumen-etiqueta { font-size: 12px; }
+  .navegacion { flex-direction: column-reverse; align-items: stretch; }
+  .navegacion-derecha { flex-direction: column-reverse; }
+  .navegacion button { width: 100%; }
+  .correo-acciones { grid-template-columns: 1fr; }
+  .correo-acciones button { width: 100%; }
+  .texto-legal { max-height: none; overflow: visible; }
+  .tira-celda { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--color-borde); }
+  .tira-celda:last-child { border-bottom: 0; }
+}
+
+@media (max-width: 420px) {
+  .rejilla-opciones { grid-template-columns: 1fr; }
+  .progreso-etiquetas { gap: 10px; }
+  .progreso-etiquetas span:last-child { font-size: 12px; }
+}
+
+/* Respeta la preferencia de menos movimiento del sistema */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media print {
+  .encabezado, .progreso-zona, .riel, .navegacion, .capa-carga { display: none !important; }
+  main { display: block; }
+  .tarjeta { border: 1px solid #999; }
+}
+</style>
+
+</head>
+<body>
+
+<a href="#contenido" class="saltar-al-contenido">Saltar al contenido</a>
+
+<!-- ============================================================
+     ENCABEZADO
+     ============================================================ -->
+<header class="encabezado">
+  <div class="encabezado-interno">
+    <!--
+  Logo.html
+  Logotipo institucional embebido como data URI.
+
+  Se incrusta dentro del propio archivo para que no dependa de una URL
+  externa ni de permisos de Drive: asi el encabezado siempre carga.
+
+  PARA CAMBIAR EL LOGOTIPO: reemplace la cadena base64 del atributo src.
+  Puede generarla en cualquier conversor de "PNG a base64" y debe quedar
+  precedida por  data:image/png;base64,
+-->
+<img src="data:image/png;base64,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"
+     alt="Corporacion Universitaria del Meta - UNIMETA"
+     class="logo" width="302" height="112">
+
+    <div class="encabezado-textos">
+      <h1>Actualización de Datos del Personal</h1>
+      <p>Corporación Universitaria del Meta - UNIMETA</p>
+    </div>
+  </div>
+</header>
+<div class="franja" aria-hidden="true"></div>
+
+<div class="progreso-zona" id="zonaProgreso">
+  <div class="progreso-interno">
+    <div class="progreso-etiquetas">
+      <span id="indicadorPaso">Paso 1 de 10</span>
+      <span id="nombrePaso">Autorización</span>
+    </div>
+    <div class="progreso-barra" role="progressbar" aria-valuemin="1" aria-valuemax="10"
+         aria-valuenow="1" aria-label="Avance del formulario" id="barraProgreso">
+      <span class="progreso-celda cumplida"></span><span class="progreso-celda"></span>
+      <span class="progreso-celda"></span><span class="progreso-celda"></span>
+      <span class="progreso-celda"></span><span class="progreso-celda"></span>
+      <span class="progreso-celda"></span><span class="progreso-celda"></span>
+      <span class="progreso-celda"></span><span class="progreso-celda"></span>
+    </div>
+  </div>
+</div>
+
+<main id="contenido">
+
+  <!-- Riel de secciones: solo visual, se sincroniza desde irAPaso() -->
+  <nav class="riel" id="rielPasos" aria-label="Secciones del formulario">
+    <p class="riel-titulo">Secciones</p>
+    <ol id="rielLista"></ol>
+  </nav>
+
+  <div class="columna-principal">
+
+  <!-- Error general del envio -->
+  <div class="aviso aviso-error" id="avisoError" style="display:none;" role="alert"></div>
+
+  <!-- Region para lectores de pantalla -->
+  <div class="solo-lectores" aria-live="polite" id="anuncio"></div>
+
+  <!-- Resumen de errores. Se traslada al inicio de la tarjeta del paso activo. -->
+  <div class="resumen-errores" id="resumenErrores" role="alert" tabindex="-1">
+    <h3 id="resumenErroresTitulo"></h3>
+    <p>Revise los campos señalados y vuelva a intentar.</p>
+    <ul id="resumenErroresLista"></ul>
+  </div>
+
+  <form id="formulario" novalidate>
+
+  <!-- ========================================================
+       PASO 1 - AUTORIZACION
+       ======================================================== -->
+  <section class="paso activo tarjeta" data-paso="1" aria-labelledby="t1">
+    <h2 class="paso-titulo" id="t1">Actualización de datos personales</h2>
+    <p class="paso-descripcion" id="introduccion"></p>
+
+    <div class="tira-datos">
+      <div class="tira-celda"><p>Duración</p><p>10 minutos</p></div>
+      <div class="tira-celda"><p>Envíos permitidos</p><p>Uno por persona</p></div>
+      <div class="tira-celda"><p>Dirigido a</p><p>Personal administrativo y docente</p></div>
+    </div>
+
+    <p class="subtitulo">Autorización para el tratamiento de datos personales</p>
+
+    <div class="texto-legal" id="textoAutorizacion" tabindex="0"
+         role="region" aria-label="Texto de autorización de tratamiento de datos"></div>
+
+    <fieldset id="campo-autorizaDatos">
+      <legend>
+        &iquest;Autoriza el tratamiento de sus datos personales en los términos anteriores?
+        <span class="obligatorio">*</span>
+      </legend>
+      <!-- Las dos opciones se construyen desde Config.gs (TEXTOS.opcionAcepta). -->
+      <div class="opciones opciones-columna" id="opcionesAutorizacion" data-radio="autorizaDatos"></div>
+      <p class="mensaje-error" id="error-autorizaDatos">
+        Debe responder si autoriza el tratamiento de sus datos.
+      </p>
+    </fieldset>
+
+    <div class="navegacion">
+      <span></span>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 2 - IDENTIFICACION Y VINCULACION
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="2" aria-labelledby="t2">
+    <h2 class="paso-titulo" id="t2">Identificación y vinculación</h2>
+    <p class="paso-descripcion">Datos básicos de identificación y su vínculo con la institución.</p>
+
+    <div class="rejilla">
+      <div class="campo" id="campo-tipoVinculacion">
+        <label for="tipoVinculacion">Tipo de vinculación<span class="obligatorio">*</span></label>
+        <select id="tipoVinculacion" data-catalogo="tiposVinculacion">
+          <option value="">Seleccione...</option>
+        </select>
+        <p class="mensaje-error" id="error-tipoVinculacion">Seleccione el tipo de vinculación.</p>
+      </div>
+
+      <div class="campo" id="campo-cargo">
+        <label for="cargo">Cargo<span class="obligatorio">*</span></label>
+        <input type="text" id="cargo" maxlength="150" autocomplete="organization-title">
+        <p class="mensaje-error" id="error-cargo">Indique su cargo.</p>
+      </div>
+
+      <div class="campo" id="campo-tipoDocumento">
+        <label for="tipoDocumento">Tipo de documento<span class="obligatorio">*</span></label>
+        <select id="tipoDocumento" data-catalogo="tiposDocumento">
+          <option value="">Seleccione...</option>
+        </select>
+        <p class="mensaje-error" id="error-tipoDocumento">Seleccione el tipo de documento.</p>
+      </div>
+
+      <div class="campo" id="campo-numDocumento">
+        <label for="numDocumento">Número de documento<span class="obligatorio">*</span></label>
+        <input type="text" id="numDocumento" maxlength="20" inputmode="numeric" autocomplete="off">
+        <p class="mensaje-error" id="error-numDocumento">Digite un número de documento válido.</p>
+      </div>
+
+      <div class="campo" id="campo-nombres">
+        <label for="nombres">Nombres<span class="obligatorio">*</span></label>
+        <input type="text" id="nombres" maxlength="150" autocomplete="given-name">
+        <p class="mensaje-error" id="error-nombres">Digite sus nombres, sin números.</p>
+      </div>
+
+      <div class="campo" id="campo-apellidos">
+        <label for="apellidos">Apellidos<span class="obligatorio">*</span></label>
+        <input type="text" id="apellidos" maxlength="150" autocomplete="family-name">
+        <p class="mensaje-error" id="error-apellidos">Digite sus apellidos, sin números.</p>
+      </div>
+
+      <div class="campo" id="campo-fechaNacimiento">
+        <label for="fechaNacimiento">Fecha de nacimiento<span class="obligatorio">*</span></label>
+        <input type="date" id="fechaNacimiento">
+        <p class="mensaje-error" id="error-fechaNacimiento">Indique una fecha de nacimiento válida.</p>
+      </div>
+
+      <div class="campo" id="campo-celular">
+        <label for="celular">Número de celular<span class="obligatorio">*</span></label>
+        <input type="tel" id="celular" maxlength="20" inputmode="tel" autocomplete="tel">
+        <p class="mensaje-error" id="error-celular">Digite un número de celular válido.</p>
+      </div>
+
+      <div class="campo ancho-total" id="campo-correo">
+        <label for="correo">Correo institucional<span class="opcional">(opcional)</span></label>
+        <input type="email" id="correo" maxlength="150" autocomplete="email"
+               placeholder="nombre@unimeta.edu.co">
+        <p class="mensaje-error" id="error-correo">Use un correo @unimeta.edu.co válido.</p>
+      </div>
+
+      <div class="campo ancho-total" id="campo-correoPersonal">
+        <label for="correoPersonal">Correo personal de contacto<span class="obligatorio">*</span></label>
+        <input type="email" id="correoPersonal" maxlength="150"
+               placeholder="nombre@hotmail.com">
+        <p class="ayuda">Puede ser de cualquier proveedor: Hotmail, Outlook, Yahoo o Gmail.</p>
+        <p class="mensaje-error" id="error-correoPersonal">Digite un correo personal de contacto válido.</p>
+      </div>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 3 - ADSCRIPCION INSTITUCIONAL
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="3" aria-labelledby="t3">
+    <h2 class="paso-titulo" id="t3">Adscripción institucional</h2>
+    <p class="paso-descripcion" id="descripcionAdscripcion"></p>
+
+    <!-- Sin tipo de vinculacion no se sabe que preguntar. -->
+    <div class="aviso aviso-alerta" id="avisoSinVinculacion" hidden>
+      Vuelva al paso anterior e indique su tipo de vinculación para continuar.
+    </div>
+
+    <!-- DOCENTE: se pregunta la escuela. -->
+    <div id="bloqueDocente" hidden>
+      <div class="campo" id="campo-idEscuela">
+        <label for="idEscuela">Escuela a la que pertenece<span class="obligatorio">*</span></label>
+        <select id="idEscuela">
+          <option value="">Seleccione...</option>
+        </select>
+        <p class="mensaje-error" id="error-idEscuela">Seleccione la escuela a la que pertenece.</p>
+      </div>
+    </div>
+
+    <!-- ADMINISTRATIVO: unidad y dependencia. -->
+    <div id="bloqueAdministrativo" hidden>
+      <div class="campo" id="campo-unidadDirectiva">
+        <label for="unidadDirectiva">Unidad directiva<span class="obligatorio">*</span></label>
+        <select id="unidadDirectiva">
+          <option value="">Seleccione...</option>
+        </select>
+        <p class="mensaje-error" id="error-unidadDirectiva">Seleccione la unidad directiva.</p>
+      </div>
+
+      <div class="campo" id="campo-idDependencia">
+        <label for="idDependencia">Dependencia a la que pertenece<span class="obligatorio">*</span></label>
+        <select id="idDependencia" disabled>
+          <option value="">Seleccione primero la unidad directiva</option>
+        </select>
+        <p class="mensaje-error" id="error-idDependencia">Seleccione su dependencia.</p>
+      </div>
+
+      <div class="condicional" id="cond-otraUnidad">
+        <div class="campo" id="campo-otraUnidadDirectiva">
+          <label for="otraUnidadDirectiva">Indique su unidad o dependencia<span class="obligatorio">*</span></label>
+          <input type="text" id="otraUnidadDirectiva" maxlength="200">
+          <p class="mensaje-error" id="error-otraUnidadDirectiva">Indique la unidad a la que pertenece.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 4 - RESIDENCIA
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="4" aria-labelledby="t4">
+    <h2 class="paso-titulo" id="t4">Información de residencia</h2>
+    <p class="paso-descripcion">Lugar donde reside actualmente.</p>
+
+    <div class="rejilla">
+      <div class="campo" id="campo-ciudadResidencia">
+        <label for="ciudadResidencia">Ciudad de residencia<span class="obligatorio">*</span></label>
+        <input type="text" id="ciudadResidencia" maxlength="100" autocomplete="address-level2"
+               list="listaCiudades" placeholder="Escriba su ciudad">
+        <p class="mensaje-error" id="error-ciudadResidencia">Indique la ciudad de residencia.</p>
+      </div>
+
+      <div class="campo" id="campo-direccion">
+        <label for="direccion">Dirección de residencia<span class="opcional">(opcional)</span></label>
+        <input type="text" id="direccion" maxlength="200" autocomplete="street-address">
+      </div>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 5 - INFORMACION FAMILIAR
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="5" aria-labelledby="t5">
+    <h2 class="paso-titulo" id="t5">Información familiar</h2>
+    <p class="paso-descripcion">Estado civil, cónyuge e hijos.</p>
+
+    <div class="campo" id="campo-estadoCivil">
+      <label for="estadoCivil">Estado civil<span class="obligatorio">*</span></label>
+      <select id="estadoCivil" data-catalogo="estadosCiviles">
+        <option value="">Seleccione...</option>
+      </select>
+      <p class="mensaje-error" id="error-estadoCivil">Seleccione su estado civil.</p>
+    </div>
+
+    <fieldset id="campo-tieneConyuge">
+      <legend>¿Tiene cónyuge o compañero(a) permanente?<span class="obligatorio">*</span></legend>
+      <div class="opciones" data-radio="tieneConyuge" data-valores="Si|No"></div>
+      <p class="mensaje-error" id="error-tieneConyuge">Indique si tiene cónyuge o compañero(a).</p>
+    </fieldset>
+
+    <div class="condicional" id="cond-conyuge">
+      <div class="rejilla">
+        <div class="campo ancho-total" id="campo-nombreConyuge">
+          <label for="nombreConyuge">Nombres y apellidos del cónyuge o compañero(a)<span class="obligatorio">*</span></label>
+          <input type="text" id="nombreConyuge" maxlength="150">
+          <p class="mensaje-error" id="error-nombreConyuge">Digite el nombre del cónyuge, sin números.</p>
+        </div>
+
+        <div class="campo" id="campo-ocupacionConyuge">
+          <label for="ocupacionConyuge">Ocupación del cónyuge<span class="obligatorio">*</span></label>
+          <select id="ocupacionConyuge" data-catalogo="ocupacionesConyuge">
+            <option value="">Seleccione...</option>
+          </select>
+          <p class="mensaje-error" id="error-ocupacionConyuge">Seleccione la ocupación.</p>
+        </div>
+
+        <div class="campo condicional" id="cond-otraOcupacion">
+          <label for="otraOcupacionConyuge">¿Cuál es la ocupación?<span class="obligatorio">*</span></label>
+          <input type="text" id="otraOcupacionConyuge" maxlength="150">
+          <p class="mensaje-error" id="error-otraOcupacionConyuge">Especifique la ocupación.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subtitulo">Hijos</h3>
+
+    <fieldset id="campo-tieneHijos">
+      <legend>¿Tiene hijos?<span class="obligatorio">*</span></legend>
+      <div class="opciones" data-radio="tieneHijos" data-valores="Si|No"></div>
+      <p class="mensaje-error" id="error-tieneHijos">Indique si tiene hijos.</p>
+    </fieldset>
+
+    <div class="condicional" id="cond-hijos">
+      <div class="lista-encabezado">
+        <button type="button" class="btn-agregar" id="btnAgregarHijo">+ Agregar hijo</button>
+        <span class="contador" id="contadorHijos">Ningún hijo registrado</span>
+      </div>
+      <div id="listaHijos"></div>
+      <div class="vacio" id="vacioHijos">
+        Aún no ha registrado ningún hijo. Use el botón &laquo;Agregar hijo&raquo;.
+      </div>
+      <p class="mensaje-error" id="error-hijos" style="display:none;">
+        Indicó que tiene hijos, pero no ha registrado ninguno.
+      </p>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 6 - CONTACTOS DE EMERGENCIA
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="6" aria-labelledby="t6">
+    <h2 class="paso-titulo" id="t6">Contacto de emergencia</h2>
+    <p class="paso-descripcion">
+      Persona a quien la institución debe comunicarse en caso de emergencia.
+    </p>
+
+    <div id="listaContactos"></div>
+    <p class="mensaje-error" id="error-contactos" style="display:none;">
+      Debe registrar el contacto de emergencia.
+    </p>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 7 - SEGURIDAD SOCIAL
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="7" aria-labelledby="t7">
+    <h2 class="paso-titulo" id="t7">Seguridad social</h2>
+    <p class="paso-descripcion">Fondo de cesantías y administradora de riesgos laborales.</p>
+
+    <div class="campo" id="campo-fondoCesantias">
+      <label for="fondoCesantias">Fondo de cesantías<span class="obligatorio">*</span></label>
+      <select id="fondoCesantias" data-catalogo="fondosCesantias">
+        <option value="">Seleccione...</option>
+      </select>
+      <p class="mensaje-error" id="error-fondoCesantias">Seleccione el fondo de cesantías.</p>
+    </div>
+
+    <div class="campo condicional" id="cond-otroFondo">
+      <label for="otroFondoCesantias">¿Cuál fondo de cesantías?<span class="obligatorio">*</span></label>
+      <input type="text" id="otroFondoCesantias" maxlength="150">
+      <p class="mensaje-error" id="error-otroFondoCesantias">Especifique el fondo de cesantías.</p>
+    </div>
+
+    <h3 class="subtitulo">Riesgos laborales</h3>
+
+    <div class="campo" id="campo-arl">
+      <label for="arl">ARL a la que se encuentra afiliado(a)<span class="obligatorio">*</span></label>
+      <select id="arl" data-catalogo="arls">
+        <option value="">Seleccione...</option>
+      </select>
+      <p class="mensaje-error" id="error-arl">Seleccione la ARL.</p>
+    </div>
+
+    <div class="campo condicional" id="cond-otraArl">
+      <label for="otraArl">¿Cuál ARL?<span class="obligatorio">*</span></label>
+      <input type="text" id="otraArl" maxlength="150">
+      <p class="mensaje-error" id="error-otraArl">Especifique la ARL.</p>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 8 - PASATIEMPOS Y ACTIVIDAD FISICA
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="8" aria-labelledby="t8">
+    <h2 class="paso-titulo" id="t8">Pasatiempos y actividad física</h2>
+    <p class="paso-descripcion">
+      Esta información permite a Bienestar Institucional planear actividades
+      acordes con los intereses del personal.
+    </p>
+
+    <fieldset>
+      <legend>Pasatiempos<span class="opcional">(opcional; puede marcar varios)</span></legend>
+      <div class="rejilla-opciones" data-casillas="pasatiempos" data-catalogo="pasatiempos"></div>
+    </fieldset>
+
+    <div class="campo condicional" id="cond-otroPasatiempo">
+      <label for="otroPasatiempo">¿Cuál otro pasatiempo?</label>
+      <input type="text" id="otroPasatiempo" maxlength="200">
+    </div>
+
+    <h3 class="subtitulo">Actividad física</h3>
+
+    <fieldset id="campo-practicaDeporte">
+      <legend>¿Practica algún deporte o actividad física?<span class="obligatorio">*</span></legend>
+      <div class="opciones" data-radio="practicaDeporte" data-valores="Si|No"></div>
+      <p class="mensaje-error" id="error-practicaDeporte">Indique si practica algún deporte.</p>
+    </fieldset>
+
+    <div class="condicional" id="cond-deporte">
+      <fieldset>
+        <legend>¿Cuáles practica?<span class="obligatorio">*</span></legend>
+        <div class="rejilla-opciones" data-casillas="deportes" data-catalogo="deportes"></div>
+      </fieldset>
+
+      <div class="campo condicional" id="cond-otroDeporte">
+        <label for="otrosDeportes">¿Cuál otro deporte o actividad?<span class="obligatorio">*</span></label>
+        <input type="text" id="otrosDeportes" maxlength="200"
+               placeholder="Puede escribir varios separados por coma">
+        <p class="mensaje-error" id="error-otrosDeportes">Indique cuál deporte o actividad practica.</p>
+      </div>
+      <p class="mensaje-error" id="error-deportes" style="display:none;">
+        Seleccione o escriba al menos un deporte.
+      </p>
+
+      <div class="campo" id="campo-frecuenciaDeporte">
+        <label for="frecuenciaDeporte">¿Con qué frecuencia?<span class="obligatorio">*</span></label>
+        <select id="frecuenciaDeporte" data-catalogo="frecuenciasDeporte">
+          <option value="">Seleccione...</option>
+        </select>
+        <p class="mensaje-error" id="error-frecuenciaDeporte">Seleccione la frecuencia.</p>
+      </div>
+    </div>
+
+    <h3 class="subtitulo">Actividades institucionales</h3>
+
+    <fieldset id="campo-interesActividades">
+      <legend>
+        Le interesaría participar en actividades deportivas, culturales o
+        recreativas institucionales?<span class="obligatorio">*</span>
+      </legend>
+      <div class="opciones" data-radio="interesActividades" data-valores="Si|No|Tal vez"></div>
+      <p class="mensaje-error" id="error-interesActividades">Indique su interés.</p>
+    </fieldset>
+
+    <div class="condicional" id="cond-actividades">
+      <fieldset>
+        <legend>¿Cuáles le interesan?<span class="opcional">(puede marcar varias)</span></legend>
+        <div class="rejilla-opciones" data-casillas="actividadesInteres" data-catalogo="actividadesInteres"></div>
+      </fieldset>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 9 - FORMACION ACADEMICA
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="9" aria-labelledby="t9">
+    <h2 class="paso-titulo" id="t9">Formación académica</h2>
+    <p class="paso-descripcion">Registre sus estudios, desde el bachillerato hasta el nivel más alto alcanzado.</p>
+
+    <div class="campo" id="campo-nivelFormacionMaximo">
+      <label for="nivelFormacionMaximo">Nivel de formación más alto alcanzado<span class="obligatorio">*</span></label>
+      <select id="nivelFormacionMaximo" data-catalogo="nivelesFormacion">
+        <option value="">Seleccione...</option>
+      </select>
+      <p class="mensaje-error" id="error-nivelFormacionMaximo">Seleccione su nivel de formación.</p>
+    </div>
+
+    <h3 class="subtitulo">Estudios realizados</h3>
+
+    <div class="lista-encabezado">
+      <button type="button" class="btn-agregar" id="btnAgregarFormacion">+ Agregar formación académica</button>
+      <span class="contador" id="contadorFormacion">Ningún estudio registrado</span>
+    </div>
+    <div id="listaFormacion"></div>
+    <div class="vacio" id="vacioFormacion">
+      Aún no ha registrado estudios. Use el botón &laquo;Agregar formación académica&raquo;.
+    </div>
+    <p class="mensaje-error" id="error-formacion" style="display:none;">
+      Debe registrar al menos un estudio o título.
+    </p>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       PASO 10 - REVISION Y ENVIO
+       ======================================================== -->
+  <section class="paso tarjeta" data-paso="10" aria-labelledby="t10">
+    <h2 class="paso-titulo" id="t10">Revisión y confirmación</h2>
+    <p class="paso-descripcion">
+      Revise la información antes de enviarla. Puede volver a cualquier sección
+      para corregirla con el botón &laquo;Corregir&raquo;.
+    </p>
+
+    <div id="resumen"></div>
+
+    <div class="campo" id="campo-confirmaInformacion">
+      <label class="opcion" for="confirmaInformacion">
+        <input type="checkbox" id="confirmaInformacion">
+        <span id="textoConfirmacion"><span class="obligatorio" aria-hidden="true">*</span></span>
+      </label>
+      <p class="mensaje-error" id="error-confirmaInformacion">
+        Debe confirmar que revisó la información.
+      </p>
+    </div>
+
+    <div class="navegacion">
+      <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-texto" id="btnCancelar">Cancelar</button>
+        <button type="button" class="btn-primario" id="btnEnviar">Enviar información</button>
+      </div>
+    </div>
+  </section>
+
+  </form>
+
+  <!-- ========================================================
+       PANTALLA FINAL
+       ======================================================== -->
+  <section class="tarjeta pantalla-final" id="pantallaFinal" style="display:none;" aria-live="polite">
+
+    <div class="final-cabecera">
+      <p class="final-rotulo" id="rotuloFinal"></p>
+      <h2 id="tituloFinal"></h2>
+      <p id="mensajeFinal"></p>
+    </div>
+
+    <!-- Constancia del envio. Los tres valores llegan del servidor. -->
+    <div class="final-datos">
+      <div class="final-dato">
+        <p>Número de radicado</p>
+        <p id="numeroRadicado"></p>
+      </div>
+      <div class="final-dato">
+        <p>Fecha y hora de envío</p>
+        <p id="fechaRecepcion"></p>
+      </div>
+      <div class="final-dato">
+        <p>Correo registrado</p>
+        <p id="correoRegistrado"></p>
+      </div>
+    </div>
+
+    <div class="final-cuerpo">
+      <p class="final-seccion">Qué sigue</p>
+      <ol class="final-pasos" id="listaQueSigue"></ol>
+    </div>
+
+  </section>
+
+    <p class="nota-pie" id="notaPie">Complete el formulario en una sola sesión: la
+       información no se guarda hasta que la envíe, y solo podrá enviarla una vez.</p>
+  </div><!-- /columna-principal -->
+
+</main>
+
+<!-- Confirmaciones con diseño propio -->
+<div class="modal-fondo" id="modalConfirmacion" hidden>
+  <section class="modal-dialogo" role="dialog" aria-modal="true"
+           aria-labelledby="modalTitulo" aria-describedby="modalMensaje">
+    <button type="button" class="modal-cerrar" id="modalCerrar" aria-label="Cerrar">&times;</button>
+    <div class="modal-icono" id="modalIcono" aria-hidden="true">!</div>
+    <h2 id="modalTitulo">Confirmar acción</h2>
+    <p id="modalMensaje"></p>
+    <div class="modal-acciones">
+      <button type="button" class="btn-secundario" id="modalCancelar">Cancelar</button>
+      <button type="button" class="btn-primario" id="modalAceptar">Aceptar</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================
+     CAPA DE CARGA
+     ============================================================ -->
+<div class="capa-carga" id="capaCarga" role="status" aria-live="assertive">
+  <div class="girador" aria-hidden="true"></div>
+  <p id="textoCarga">Guardando su información...</p>
+</div>
+
+<datalist id="listaCiudades"></datalist>
+<datalist id="listaInstituciones"></datalist>
+
+<script>window.URL_SERVIDOR = "https://script.google.com/macros/s/AKfycbw7h5je56SzVEgpRmNRcxuDon-mD9MjVuImIXQnKWSIjCkxAhOF1rt1FewUT9lgqIWbtg/exec";</script>
+<script>
+/* ============================================================
+   JavaScript.html
+   Actualizacion de Datos del Personal - UNIMETA
+
+   Navegacion por pasos, condicionales, listas dinamicas,
+   validacion en el navegador y envio.
+
+   La validacion de aqui es solo para comodidad del usuario.
+   La que manda es la del servidor, en Code.gs.
+   ============================================================ */
+
+'use strict';
+
+/* ------------------------------------------------------------
+   ESTADO
+   ------------------------------------------------------------ */
+
+var CONFIG = null;              // catalogos y textos que llegan del servidor
+var pasoActual = 1;
+var TOTAL_PASOS = 10;
+var enviando = false;
+
+var NOMBRES_PASOS = {
+  1: 'Autorización',
+  2: 'Identificación',
+  3: 'Adscripción',
+  4: 'Residencia',
+  5: 'Familia',
+  6: 'Contactos',
+  7: 'Seguridad social',
+  8: 'Pasatiempos',
+  9: 'Formación',
+  10: 'Revisión y envío'
+};
+
+// Listas dinamicas. Cada elemento lleva un id interno para el DOM.
+var hijos = [];
+var contactos = [];
+var formacion = [];
+var secuencia = 0;
+
+var OPCION_OTRA_UNIDAD = '__OTRA__';
+
+/* ------------------------------------------------------------
+   ATAJOS
+   ------------------------------------------------------------ */
+
+function $(id) { return document.getElementById(id); }
+function $$(sel, raiz) { return Array.prototype.slice.call((raiz || document).querySelectorAll(sel)); }
+
+function crear(etiqueta, clase, texto) {
+  var el = document.createElement(etiqueta);
+  if (clase) el.className = clase;
+  if (texto !== undefined && texto !== null) el.textContent = texto;
+  return el;
+}
+
+function mostrar(el, visible) {
+  if (!el) return;
+  el.classList.toggle('visible', !!visible);
+  if (!el.classList.contains('condicional')) {
+    el.style.display = visible ? '' : 'none';
+  }
+}
+
+function valorDe(id) {
+  var el = $(id);
+  return el ? String(el.value || '').trim() : '';
+}
+
+function anunciar(texto) {
+  var el = $('anuncio');
+  if (el) el.textContent = texto;
+}
+
+function mejorarAccesibilidad() {
+  var obligatorios = [
+    'tipoVinculacion', 'cargo', 'tipoDocumento', 'numDocumento', 'nombres',
+    'apellidos', 'fechaNacimiento', 'celular', 'correoPersonal', 'idEscuela',
+    'unidadDirectiva', 'idDependencia', 'otraUnidadDirectiva', 'ciudadResidencia',
+    'estadoCivil', 'nombreConyuge', 'ocupacionConyuge', 'otraOcupacionConyuge',
+    'fondoCesantias', 'otroFondoCesantias', 'arl', 'otraArl',
+    'frecuenciaDeporte', 'nivelFormacionMaximo'
+  ];
+  obligatorios.forEach(function (id) {
+    var el = $(id);
+    if (!el) return;
+    el.setAttribute('aria-required', 'true');
+    var error = $('error-' + id);
+    if (error) el.setAttribute('aria-describedby',
+      ((el.getAttribute('aria-describedby') || '') + ' ' + error.id).trim());
+  });
+}
+
+/* ------------------------------------------------------------
+   CONEXION CON EL SERVIDOR
+   ------------------------------------------------------------ */
+
+var SIN_CONEXION = 'No fue posible comunicarse con el servidor. ' +
+  'Verifique su conexión e intente de nuevo.';
+
+/**
+ * Unica via hacia el servidor. accion es una de las tres de ACCIONES_API
+ * (Api.gs) y argumento, si lo hay, su unico parametro.
+ *
+ * Publicada en GitHub Pages, la pagina llama a la URL /exec de Apps Script
+ * con fetch; scripts/construir-sitio.mjs deja esa URL en window.URL_SERVIDOR.
+ * Sin ella se usa google.script.run, que es lo que simula la vista previa.
+ */
+function llamarServidor(accion, argumento, exito, fallo) {
+  if (!window.URL_SERVIDOR) {
+    var run = google.script.run.withSuccessHandler(exito).withFailureHandler(fallo);
+    if (argumento === undefined) run[accion](); else run[accion](argumento);
+    return;
+  }
+
+  fetch(window.URL_SERVIDOR, {
+    method: 'POST',
+    // text/plain evita la consulta previa de CORS, que Apps Script no
+    // responde. El cuerpo sigue siendo JSON.
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ accion: accion, argumento: argumento }),
+    // Sin cookies de Google: con varias cuentas abiertas, eran ellas las que
+    // mandaban a la persona a una sesion equivocada (/u/7/).
+    credentials: 'omit'
+  })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (r) {
+      if (r && r.ok) exito(r.resultado);
+      else fallo({ message: (r && r.error) || SIN_CONEXION });
+    }, function () {
+      fallo({ message: SIN_CONEXION });
+    });
+}
+
+/* ------------------------------------------------------------
+   ARRANQUE
+   ------------------------------------------------------------ */
+
+document.addEventListener('DOMContentLoaded', function () {
+  $('capaCarga').classList.add('visible');
+  $('textoCarga').textContent = 'Cargando el formulario...';
+
+  llamarServidor('obtenerDatosIniciales', undefined, iniciar, function (err) {
+    $('capaCarga').classList.remove('visible');
+    mostrarErrorGeneral(err && err.message ? err.message :
+      'No fue posible cargar el formulario. Actualice la página.');
+  });
+});
+
+function iniciar(datos) {
+  CONFIG = datos;
+
+  pintarTextos();
+  poblarCatalogos();
+  poblarCiudades();
+  poblarInstituciones();
+  activarAutocompletados();
+  poblarUnidadesDirectivas();
+  poblarEscuelas();
+  activarSelectsPersonalizados();
+  conectarEventos();
+  conectarValidaciones();
+  mejorarAccesibilidad();
+
+  var fn = $('fechaNacimiento');
+  fn.max = new Date().toISOString().split('T')[0];
+  fn.min = '1920-01-01';
+
+  // Se inicia con un contacto y se pueden agregar más.
+  pintarContactos();
+  agregarFormacion();
+
+  pintarRiel();
+  irAPaso(1, true);
+
+  $('capaCarga').classList.remove('visible');
+}
+
+function pintarTextos() {
+  $('introduccion').textContent = CONFIG.textos.introduccion;
+  $('textoAutorizacion').textContent = CONFIG.textos.autorizacion;
+
+  // Las dos respuestas posibles salen de Config.gs para que el area
+  // responsable pueda ajustar su redaccion sin tocar el formulario.
+  var cont = $('opcionesAutorizacion');
+  cont.appendChild(construirOpcion('radio', 'autorizaDatos', CONFIG.textos.opcionAcepta));
+  cont.appendChild(construirOpcion('radio', 'autorizaDatos', CONFIG.textos.opcionNoAcepta));
+
+  $('textoConfirmacion').insertBefore(
+    document.createTextNode(CONFIG.textos.confirmacionFinal + ' '),
+    $('textoConfirmacion').firstChild);
+}
+
+/* ------------------------------------------------------------
+   CATALOGOS
+   ------------------------------------------------------------ */
+
+function poblarCatalogos() {
+  // Listas desplegables
+  $$('select[data-catalogo]').forEach(function (sel) {
+    var lista = CONFIG.catalogos[sel.getAttribute('data-catalogo')] || [];
+    lista.forEach(function (v) {
+      var o = crear('option', null, v);
+      o.value = v;
+      sel.appendChild(o);
+    });
+  });
+
+  // Grupos de opcion unica. El separador es "|" porque alguna opcion
+  // lleva coma en su texto ("Si, acepto").
+  $$('[data-radio]').forEach(function (cont) {
+    var valores = cont.getAttribute('data-valores');
+    if (!valores) return;   // el de autorizacion se arma en pintarTextos
+    var nombre = cont.getAttribute('data-radio');
+    valores.split('|').forEach(function (v) {
+      cont.appendChild(construirOpcion('radio', nombre, v.trim()));
+    });
+  });
+
+  // Grupos de seleccion multiple
+  $$('[data-casillas]').forEach(function (cont) {
+    var nombre = cont.getAttribute('data-casillas');
+    var lista = CONFIG.catalogos[cont.getAttribute('data-catalogo')] || [];
+    lista.forEach(function (v) {
+      cont.appendChild(construirOpcion('checkbox', nombre, v));
+    });
+  });
+}
+
+/**
+ * El valor 'Si' se guarda sin tilde porque asi lo compara el servidor,
+ * pero a la persona se le muestra escrito correctamente.
+ */
+function etiquetaOpcion(valor) {
+  return valor === 'Si' ? 'Sí' : valor;
+}
+
+function construirOpcion(tipo, nombre, valor) {
+  var lab = crear('label', 'opcion');
+  var inp = document.createElement('input');
+  inp.type = tipo;
+  inp.name = nombre;
+  inp.value = valor;
+
+  inp.addEventListener('change', function () {
+    if (tipo === 'radio') {
+      $$('input[name="' + nombre + '"]').forEach(function (o) {
+        o.closest('.opcion').classList.toggle('marcada', o.checked);
+      });
+    } else {
+      lab.classList.toggle('marcada', inp.checked);
+    }
+    alCambiar(nombre);
+  });
+
+  lab.appendChild(inp);
+  lab.appendChild(crear('span', null, etiquetaOpcion(valor)));
+  return lab;
+}
+
+/** Sugerencias del campo "Nombre de la institucion". */
+function poblarInstituciones() {
+  var lista = $('listaInstituciones');
+  if (!lista) return;
+  lista.innerHTML = '';
+  lista.appendChild(new Option(CONFIG.institucionPropia, CONFIG.institucionPropia));
+}
+
+/** Llena la lista de sugerencias de ciudad que comparten los tres campos. */
+function poblarCiudades() {
+  var lista = $('listaCiudades');
+  if (!lista) return;
+  lista.innerHTML = '';
+  (CONFIG.catalogos.ciudades || []).forEach(function (c) {
+    lista.appendChild(new Option(c, c));
+  });
+}
+
+function poblarUnidadesDirectivas() {
+  var sel = $('unidadDirectiva');
+  CONFIG.unidadesDirectivas.forEach(function (u) {
+    var o = crear('option', null, u);
+    o.value = u;
+    sel.appendChild(o);
+  });
+  var otra = crear('option', null, 'Otra / no aparece en la lista');
+  otra.value = OPCION_OTRA_UNIDAD;
+  sel.appendChild(otra);
+}
+
+/** Lista de escuelas para los docentes. Sale de la hoja DEPENDENCIAS. */
+function poblarEscuelas() {
+  var sel = $('idEscuela');
+  (CONFIG.escuelas || []).forEach(function (e) {
+    var o = crear('option', null, e.nombre);
+    o.value = e.id;
+    sel.appendChild(o);
+  });
+}
+
+/** Verdadero si la vinculacion elegida incluye docencia. */
+function tieneDocencia() {
+  return valorDe('tipoVinculacion') === 'Docente';
+}
+
+/** Verdadero si la vinculacion elegida incluye labor administrativa. */
+function tieneAdministracion() {
+  return valorDe('tipoVinculacion') === 'Administrativo';
+}
+
+/**
+ * El paso 3 cambia por completo segun el tipo de vinculacion:
+ * a un docente se le pregunta la escuela; a un administrativo,
+ * la unidad directiva y luego la dependencia.
+ */
+function configurarPaso3() {
+  var tipo = valorDe('tipoVinculacion');
+  var hayTipo = !!tipo;
+
+  $('avisoSinVinculacion').hidden = hayTipo;
+  $('bloqueDocente').hidden = !(hayTipo && tieneDocencia());
+  $('bloqueAdministrativo').hidden = !(hayTipo && tieneAdministracion());
+
+  $('descripcionAdscripcion').textContent = !hayTipo ? ''
+    : tipo === 'Docente'
+      ? 'Indique la escuela a la que se encuentra adscrito(a) como docente.'
+      : 'Seleccione primero la unidad directiva. Enseguida aparecerán ' +
+        'únicamente las dependencias que pertenecen a esa unidad.';
+}
+
+function esDocente() { return valorDe('tipoVinculacion') === 'Docente'; }
+
+/** El cargo solo corresponde al personal administrativo. */
+function configurarCargo() {
+  var docente = esDocente();
+  var campo = $('campo-cargo');
+  var input = $('cargo');
+  campo.hidden = docente;
+  input.disabled = docente;
+  input.setAttribute('aria-required', docente ? 'false' : 'true');
+  if (docente) {
+    input.value = '';
+    limpiarError(input);
+  }
+}
+
+/** Abre una confirmación accesible con el estilo visual del formulario. */
+function mostrarConfirmacion(opciones, alAceptar) {
+  var fondo = $('modalConfirmacion');
+  var aceptar = $('modalAceptar');
+  var cancelar = $('modalCancelar');
+  var cerrar = $('modalCerrar');
+  var focoAnterior = document.activeElement;
+  var soloAviso = opciones.soloAviso === true;
+  $('modalTitulo').textContent = opciones.titulo || 'Confirmar acción';
+  $('modalMensaje').textContent = opciones.mensaje || '';
+  $('modalIcono').textContent = soloAviso ? 'i' : '!';
+  aceptar.textContent = opciones.textoAceptar || (soloAviso ? 'Entendido' : 'Confirmar');
+  cancelar.hidden = soloAviso;
+  cerrar.hidden = false;
+  fondo.hidden = false;
+  document.body.classList.add('modal-abierto');
+
+  function terminar(confirmado) {
+    fondo.hidden = true;
+    document.body.classList.remove('modal-abierto');
+    document.removeEventListener('keydown', alTeclado);
+    aceptar.onclick = cancelar.onclick = cerrar.onclick = fondo.onclick = null;
+    if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
+    if (confirmado && alAceptar) alAceptar();
+  }
+  function alTeclado(e) {
+    if (e.key === 'Escape') terminar(false);
+    if (e.key === 'Tab') {
+      var controles = soloAviso ? [cerrar, aceptar] : [cerrar, cancelar, aceptar];
+      var primero = controles[0], ultimo = controles[controles.length - 1];
+      if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+    }
+  }
+  aceptar.onclick = function () { terminar(true); };
+  cancelar.onclick = cerrar.onclick = function () { terminar(false); };
+  fondo.onclick = function (e) { if (e.target === fondo) terminar(false); };
+  document.addEventListener('keydown', alTeclado);
+  setTimeout(function () { (soloAviso ? aceptar : cancelar).focus(); }, 0);
+}
+
+function mostrarAviso(titulo, mensaje) {
+  mostrarConfirmacion({ titulo: titulo, mensaje: mensaje, soloAviso: true });
+}
+
+var cerrarSelectorActivo = null;
+
+/** Reemplaza visualmente los select nativos sin alterar su valor ni sus eventos. */
+function activarSelectsPersonalizados() {
+  function preparar(select) {
+    if (!select || select.dataset.selectorPersonalizado === 'true') return;
+    select.dataset.selectorPersonalizado = 'true';
+    select.classList.add('selector-nativo-oculto');
+    var caja = crear('div', 'selector-personalizado');
+    select.parentNode.insertBefore(caja, select);
+    caja.appendChild(select);
+    var boton = crear('button', 'selector-boton');
+    boton.type = 'button';
+    boton.setAttribute('aria-haspopup', 'listbox');
+    boton.setAttribute('aria-expanded', 'false');
+    var lista = crear('ul', 'selector-lista');
+    lista.hidden = true;
+    lista.setAttribute('role', 'listbox');
+    caja.appendChild(boton); caja.appendChild(lista);
+    var activa = -1;
+
+    function cerrar() {
+      lista.hidden = true; caja.classList.remove('abierto');
+      boton.setAttribute('aria-expanded', 'false');
+      activa = -1;
+      if (cerrarSelectorActivo === cerrar) cerrarSelectorActivo = null;
+    }
+    function sincronizar() {
+      var elegida = select.options[select.selectedIndex];
+      boton.textContent = elegida ? elegida.textContent : 'Seleccione...';
+      boton.classList.toggle('placeholder', !select.value);
+      Array.prototype.forEach.call(lista.children, function (li) {
+        li.classList.toggle('seleccionada', li.dataset.valor === select.value);
+      });
+      boton.disabled = select.disabled;
+    }
+    function construir() {
+      lista.innerHTML = '';
+      activa = -1;
+      Array.prototype.forEach.call(select.options, function (opcion) {
+        var item = crear('li', 'selector-opcion', opcion.textContent);
+        item.dataset.valor = opcion.value;
+        item.setAttribute('role', 'option');
+        if (opcion.disabled) item.classList.add('deshabilitada');
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          if (opcion.disabled) return;
+          select.value = opcion.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          sincronizar(); cerrar(); boton.focus();
+        });
+        lista.appendChild(item);
+      });
+      sincronizar();
+    }
+    boton.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (boton.disabled) return;
+      var abrir = lista.hidden;
+      if (cerrarSelectorActivo && cerrarSelectorActivo !== cerrar) cerrarSelectorActivo();
+      lista.hidden = !abrir; caja.classList.toggle('abierto', abrir);
+      boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+      cerrarSelectorActivo = abrir ? cerrar : null;
+    });
+    boton.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { cerrar(); return; }
+      var opciones = Array.prototype.filter.call(lista.children, function (item) {
+        return !item.classList.contains('deshabilitada');
+      });
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (lista.hidden) boton.click();
+        if (!opciones.length) return;
+        if (activa >= 0) opciones[activa].classList.remove('activa');
+        activa = e.key === 'ArrowDown'
+          ? (activa + 1) % opciones.length
+          : (activa <= 0 ? opciones.length - 1 : activa - 1);
+        opciones[activa].classList.add('activa');
+        opciones[activa].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && !lista.hidden && activa >= 0) {
+        e.preventDefault();
+        opciones[activa].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      }
+    });
+    select.addEventListener('change', sincronizar);
+    select._sincronizarPersonalizado = sincronizar;
+    new MutationObserver(construir).observe(select, { childList: true, subtree: true, attributes: true });
+    construir();
+  }
+  function todos(raiz) {
+    if (raiz.matches && raiz.matches('select')) preparar(raiz);
+    Array.prototype.forEach.call(raiz.querySelectorAll ? raiz.querySelectorAll('select') : [], preparar);
+  }
+  todos(document);
+  new MutationObserver(function (cambios) {
+    cambios.forEach(function (c) { Array.prototype.forEach.call(c.addedNodes, todos); });
+  }).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('click', function () { if (cerrarSelectorActivo) cerrarSelectorActivo(); });
+}
+
+function sincronizarSelectsPersonalizados() {
+  $$('select').forEach(function (select) {
+    if (select._sincronizarPersonalizado) select._sincronizarPersonalizado();
+  });
+}
+
+/** Sustituye los datalist nativos por listas compactas con el estilo del formulario. */
+function activarAutocompletados() {
+  function preparar(input) {
+    if (!input || input.dataset.autocompletado === 'true') return;
+    var idLista = input.getAttribute('list');
+    var origen = idLista && $(idLista);
+    if (!origen) return;
+    input.dataset.autocompletado = 'true';
+    input.removeAttribute('list');
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    var contenedor = input.parentElement;
+    contenedor.classList.add('campo-autocompletar');
+    var lista = crear('ul', 'lista-autocompletar');
+    lista.id = 'sugerencias-' + input.id;
+    lista.setAttribute('role', 'listbox');
+    lista.hidden = true;
+    input.setAttribute('aria-controls', lista.id);
+    contenedor.appendChild(lista);
+    var activa = -1;
+
+    function cerrar() {
+      lista.hidden = true; lista.innerHTML = ''; activa = -1;
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
+    function normalizar(texto) {
+      return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+    function elegir(valor) {
+      input.value = valor;
+      // 'input' antes que 'change': las listas dinamicas (hijos, contactos,
+      // formacion) guardan el dato en su modelo escuchando 'input'. Sin este
+      // evento, elegir una sugerencia con el raton dejaba el modelo con lo
+      // ultimo tecleado y la validacion del paso rechazaba un valor correcto.
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      cerrar();
+    }
+    function pintar() {
+      var consulta = normalizar(input.value.trim());
+      if (!consulta) { cerrar(); return; }
+      var opciones = Array.prototype.map.call(origen.options, function (o) { return o.value; })
+        .filter(function (v) { return normalizar(v).indexOf(consulta) !== -1; })
+        .sort(function (a, b) {
+          return (normalizar(a).indexOf(consulta) === 0 ? 0 : 1) -
+                 (normalizar(b).indexOf(consulta) === 0 ? 0 : 1);
+        }).slice(0, 7);
+      lista.innerHTML = ''; activa = -1;
+      opciones.forEach(function (valor, i) {
+        var opcion = crear('li', 'opcion-autocompletar', valor);
+        opcion.id = lista.id + '-' + i;
+        opcion.setAttribute('role', 'option');
+        opcion.addEventListener('mousedown', function (e) { e.preventDefault(); elegir(valor); });
+        lista.appendChild(opcion);
+      });
+      lista.hidden = !opciones.length;
+      input.setAttribute('aria-expanded', opciones.length ? 'true' : 'false');
+    }
+    input.addEventListener('input', pintar);
+    input.addEventListener('focus', pintar);
+    input.addEventListener('blur', function () { setTimeout(cerrar, 120); });
+    input.addEventListener('keydown', function (e) {
+      var opciones = lista.children;
+      if (e.key === 'Escape') { cerrar(); return; }
+      if (lista.hidden || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter')) return;
+      if (e.key === 'Enter' && activa >= 0) {
+        e.preventDefault(); elegir(opciones[activa].textContent); return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (activa >= 0) opciones[activa].classList.remove('activa');
+        activa = e.key === 'ArrowDown' ? Math.min(activa + 1, opciones.length - 1) : Math.max(activa - 1, 0);
+        opciones[activa].classList.add('activa');
+        input.setAttribute('aria-activedescendant', opciones[activa].id);
+      }
+    });
+  }
+  function prepararTodos(raiz) {
+    if (raiz.matches && raiz.matches('input[list]')) preparar(raiz);
+    Array.prototype.forEach.call(raiz.querySelectorAll ? raiz.querySelectorAll('input[list]') : [], preparar);
+  }
+  prepararTodos(document);
+  new MutationObserver(function (cambios) {
+    cambios.forEach(function (cambio) {
+      Array.prototype.forEach.call(cambio.addedNodes, prepararTodos);
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
+
+
+function marcados(nombre) {
+  return $$('input[name="' + nombre + '"]:checked').map(function (i) { return i.value; });
+}
+
+function marcadoUnico(nombre) {
+  var m = marcados(nombre);
+  return m.length ? m[0] : '';
+}
+
+/* ------------------------------------------------------------
+   EVENTOS
+   ------------------------------------------------------------ */
+
+function conectarEventos() {
+  $$('[data-accion="siguiente"]').forEach(function (b) {
+    b.addEventListener('click', function () { avanzar(); });
+  });
+  $$('[data-accion="anterior"]').forEach(function (b) {
+    b.addEventListener('click', function () { irAPaso(pasoActual - 1); });
+  });
+
+  $('btnAgregarHijo').addEventListener('click', function () { agregarHijo(); });
+  $('btnAgregarFormacion').addEventListener('click', function () { agregarFormacion(); });
+
+  $('btnEnviar').addEventListener('click', enviar);
+  $('btnCancelar').addEventListener('click', cancelar);
+
+  // Al salir del campo, el documento se normaliza solo.
+  var doc = $('numDocumento');
+  doc.addEventListener('blur', function () {
+    var limpio = doc.value.replace(/[^0-9A-Za-z]/g, '');
+    if (limpio !== doc.value) doc.value = limpio;
+  });
+  // El paso 3 depende del tipo de vinculacion elegido en el paso 2.
+  $('tipoVinculacion').addEventListener('change', function () {
+    configurarPaso3();
+    configurarCargo();
+  });
+
+  $('unidadDirectiva').addEventListener('change', alCambiarUnidad);
+  $('ocupacionConyuge').addEventListener('change', function () {
+    mostrar($('cond-otraOcupacion'), valorDe('ocupacionConyuge') === 'Otra');
+  });
+
+  $('fondoCesantias').addEventListener('change', function () {
+    mostrar($('cond-otroFondo'), valorDe('fondoCesantias') === 'Otro');
+  });
+
+  $('arl').addEventListener('change', function () {
+    mostrar($('cond-otraArl'), valorDe('arl') === 'Otra');
+  });
+
+  // Limpieza del mensaje de error al escribir
+  $$('input, select, textarea').forEach(function (el) {
+    el.addEventListener('input', function () { limpiarError(el); });
+  });
+
+  // Enter no debe enviar el formulario a mitad de camino
+  $('formulario').addEventListener('submit', function (e) { e.preventDefault(); });
+  $('formulario').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      if (pasoActual < TOTAL_PASOS) avanzar();
+    }
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (!enviando && hayDatos()) { e.preventDefault(); e.returnValue = ''; }
+  });
+}
+
+/**
+ * Dominios que acepta el correo institucional. Vienen del servidor para que
+ * cambiar SEGURIDAD.dominiosPermitidos baste: si esto quedara escrito aqui,
+ * una lista se actualizaria y la otra no.
+ */
+function dominiosCorreo() {
+  return (CONFIG && CONFIG.dominiosCorreo) || ['unimeta.edu.co'];
+}
+
+/** Los dominios en el formato que se le muestra a la persona. */
+function dominiosCorreoTexto() {
+  return dominiosCorreo().map(function (d) { return '@' + d; }).join(' o ');
+}
+
+function correoPermitidoCliente(correo) {
+  var t = String(correo || '').trim().toLowerCase();
+  if (!t) return true;                    // el correo institucional es opcional
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return false;
+  return dominiosCorreo().indexOf(t.split('@').pop()) !== -1;
+}
+
+/** Reacciona a los cambios de los grupos de opcion. */
+function alCambiar(nombre) {
+  if (nombre === 'autorizaDatos') {
+    // La validación del paso bloquea el avance si no autoriza, sin mostrar
+    // un aviso adicional al seleccionar la respuesta.
+  } else if (nombre === 'tieneConyuge') {
+    mostrar($('cond-conyuge'), marcadoUnico('tieneConyuge') === 'Si');
+  } else if (nombre === 'tieneHijos') {
+    var si = marcadoUnico('tieneHijos') === 'Si';
+    mostrar($('cond-hijos'), si);
+    if (si && hijos.length === 0) agregarHijo();
+  } else if (nombre === 'practicaDeporte') {
+    mostrar($('cond-deporte'), marcadoUnico('practicaDeporte') === 'Si');
+  } else if (nombre === 'interesActividades') {
+    var v = marcadoUnico('interesActividades');
+    mostrar($('cond-actividades'), v === 'Si' || v === 'Tal vez');
+  } else if (nombre === 'pasatiempos') {
+    mostrar($('cond-otroPasatiempo'), marcados('pasatiempos').indexOf('Otro') !== -1);
+  } else if (nombre === 'deportes') {
+    mostrar($('cond-otroDeporte'), marcados('deportes').indexOf('Otro') !== -1);
+  }
+}
+
+function alCambiarUnidad() {
+  var unidad = valorDe('unidadDirectiva');
+  var sel = $('idDependencia');
+  var esOtra = unidad === OPCION_OTRA_UNIDAD;
+
+  mostrar($('cond-otraUnidad'), esOtra);
+  $('campo-idDependencia').style.display = esOtra ? 'none' : '';
+
+  sel.innerHTML = '';
+
+  if (!unidad || esOtra) {
+    sel.disabled = true;
+    sel.appendChild(new Option('Seleccione primero la unidad directiva', ''));
+    return;
+  }
+
+  sel.disabled = true;
+  sel.appendChild(new Option('Cargando dependencias...', ''));
+
+  llamarServidor('obtenerDependencias', unidad, pintarDependencias, function () {
+    sel.innerHTML = '';
+    sel.appendChild(new Option('No fue posible cargar las dependencias', ''));
+  });
+}
+
+function pintarDependencias(lista) {
+  var sel = $('idDependencia');
+  sel.innerHTML = '';
+  sel.appendChild(new Option('Seleccione...', ''));
+
+  var grupoActual = null;
+  var contenedor = sel;
+
+  lista.forEach(function (d) {
+    // Se agrupa por unidad intermedia para que listas largas sean navegables.
+    if (d.grupo !== grupoActual) {
+      grupoActual = d.grupo;
+      if (grupoActual) {
+        contenedor = document.createElement('optgroup');
+        contenedor.label = grupoActual;
+        sel.appendChild(contenedor);
+      } else {
+        contenedor = sel;
+      }
+    }
+    var o = crear('option', null, d.nombre);
+    o.value = d.id;
+    contenedor.appendChild(o);
+  });
+
+  sel.disabled = false;
+  anunciar(lista.length + ' dependencias disponibles.');
+}
+
+/* ------------------------------------------------------------
+   NAVEGACION
+   ------------------------------------------------------------ */
+
+function avanzar() {
+  if (!validarPaso(pasoActual)) return;
+  if (pasoActual === TOTAL_PASOS - 1) construirResumen();
+  irAPaso(pasoActual + 1);
+}
+
+function irAPaso(n, silencioso) {
+  if (n < 1 || n > TOTAL_PASOS) return;
+
+  $$('.paso').forEach(function (s) {
+    s.classList.toggle('activo', Number(s.getAttribute('data-paso')) === n);
+  });
+
+  pasoActual = n;
+
+  $('indicadorPaso').textContent = 'Paso ' + n + ' de ' + TOTAL_PASOS;
+  $('nombrePaso').textContent = NOMBRES_PASOS[n];
+  sincronizarProgreso(n);
+  $('barraProgreso').setAttribute('aria-valuenow', n);
+  ocultarResumenErrores();
+
+  if (n === 3) configurarPaso3();
+  if (n === TOTAL_PASOS) construirResumen();
+
+  if (!silencioso) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    anunciar('Paso ' + n + ' de ' + TOTAL_PASOS + ': ' + NOMBRES_PASOS[n]);
+    var primero = document.querySelector('.paso.activo input, .paso.activo select, .paso.activo textarea');
+    if (primero) primero.focus({ preventScroll: true });
+  }
+}
+
+/* ------------------------------------------------------------
+   PROGRESO, RIEL DE SECCIONES Y RESUMEN DE ERRORES
+   ------------------------------------------------------------ */
+
+// Construye una sola vez el riel lateral a partir de NOMBRES_PASOS.
+function pintarRiel() {
+  var lista = $('rielLista');
+  if (!lista) return;
+  lista.innerHTML = '';
+  for (var i = 1; i <= TOTAL_PASOS; i++) {
+    var li = document.createElement('li');
+    var num = document.createElement('span');
+    num.className = 'riel-num';
+    num.textContent = (i < 10 ? '0' : '') + i;
+    var nombre = document.createElement('span');
+    nombre.textContent = NOMBRES_PASOS[i];
+    li.appendChild(num);
+    li.appendChild(nombre);
+    lista.appendChild(li);
+  }
+}
+
+// Marca las celdas cumplidas de la barra y resalta el paso en el riel.
+function sincronizarProgreso(n) {
+  $$('#barraProgreso .progreso-celda').forEach(function (celda, i) {
+    celda.classList.toggle('cumplida', i < n);
+  });
+  $$('#rielLista li').forEach(function (li, i) {
+    li.classList.toggle('actual', i + 1 === n);
+    li.classList.toggle('cumplida', i + 1 < n);
+  });
+}
+
+// Devuelve los campos con error del paso, sin contar los anidados.
+function camposConError(seccion) {
+  return $$('.con-error', seccion).filter(function (campo) {
+    var padre = campo.parentNode;
+    while (padre && padre !== seccion) {
+      if (padre.classList && padre.classList.contains('con-error')) return false;
+      padre = padre.parentNode;
+    }
+    return true;
+  });
+}
+
+// Panel rojo con el listado de campos pendientes, al inicio de la tarjeta.
+function mostrarResumenErrores(n) {
+  var panel = $('resumenErrores');
+  var seccion = document.querySelector('.paso[data-paso="' + n + '"]');
+  if (!panel || !seccion) return;
+
+  var pendientes = camposConError(seccion);
+  if (!pendientes.length) { ocultarResumenErrores(); return; }
+
+  if (seccion.firstChild !== panel) seccion.insertBefore(panel, seccion.firstChild);
+
+  $('resumenErroresTitulo').textContent = pendientes.length === 1
+    ? 'Falta 1 campo por completar'
+    : 'Faltan ' + pendientes.length + ' campos por completar';
+
+  var lista = $('resumenErroresLista');
+  lista.innerHTML = '';
+  pendientes.forEach(function (campo) {
+    var rotulo = campo.querySelector('label, legend, .etiqueta');
+    var texto = rotulo
+      ? rotulo.textContent.replace(/\s+/g, ' ').replace(/\*/g, '').trim()
+      : 'Campo pendiente';
+    var li = document.createElement('li');
+    var boton = document.createElement('button');
+    boton.type = 'button';
+    boton.textContent = texto;
+    boton.addEventListener('click', function () {
+      campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var control = campo.querySelector('input, select, textarea');
+      if (control && control.matches('select.selector-nativo-oculto')) {
+        control = control.parentElement.querySelector('.selector-boton');
+      }
+      if (control) setTimeout(function () { control.focus({ preventScroll: true }); }, 300);
+    });
+    li.appendChild(boton);
+    lista.appendChild(li);
+  });
+
+  panel.classList.add('visible');
+}
+
+function ocultarResumenErrores() {
+  var panel = $('resumenErrores');
+  if (panel) panel.classList.remove('visible');
+}
+
+/* ------------------------------------------------------------
+   LISTAS DINAMICAS
+   ------------------------------------------------------------ */
+
+function agregarHijo() {
+  if (hijos.length >= CONFIG.limites.maxHijos) {
+    mostrarAviso('Límite alcanzado', 'No es posible registrar más de ' + CONFIG.limites.maxHijos + ' hijos.');
+    return;
+  }
+  hijos.push({ uid: ++secuencia, nombre: '', edad: '', depende: 'Si' });
+  pintarHijos();
+}
+
+function pintarHijos() {
+  var cont = $('listaHijos');
+  cont.innerHTML = '';
+
+  hijos.forEach(function (h, i) {
+    var item = crear('div', 'item');
+
+    var cab = crear('div', 'item-encabezado');
+    cab.appendChild(crear('span', 'item-titulo', 'Hijo(a) ' + (i + 1)));
+    var quitar = crear('button', 'btn-quitar', 'Eliminar');
+    quitar.type = 'button';
+    quitar.addEventListener('click', function () {
+      mostrarConfirmacion({
+        titulo: 'Eliminar hijo(a)',
+        mensaje: '¿Desea eliminar el registro del hijo(a) ' + (i + 1) + '?',
+        textoAceptar: 'Eliminar'
+      }, function () {
+        hijos.splice(i, 1);
+        pintarHijos();
+      });
+    });
+    cab.appendChild(quitar);
+    item.appendChild(cab);
+
+    var rej = crear('div', 'rejilla');
+    rej.appendChild(campoTexto('Nombre del hijo(a)', 'hijo-nombre-' + h.uid, h.nombre, true,
+      function (v) { h.nombre = v; }, 'text', vNombre('el nombre del hijo(a)')));
+    rej.appendChild(campoNumero('Edad (años cumplidos)', 'hijo-edad-' + h.uid,
+      h.edad, 0, CONFIG.limites.edadMaximaHijo,
+      function (v) { h.edad = v; }, vEdadHijo, true));
+    rej.appendChild(campoOpciones('¿Depende económicamente de usted?', 'hijo-dep-' + h.uid,
+      ['Si', 'No'], h.depende, function (v) { h.depende = v; }));
+    item.appendChild(rej);
+
+    cont.appendChild(item);
+  });
+
+  $('vacioHijos').style.display = hijos.length ? 'none' : '';
+  $('contadorHijos').textContent = hijos.length === 0 ? 'Ningún hijo registrado'
+    : (hijos.length === 1 ? '1 hijo registrado' : hijos.length + ' hijos registrados');
+}
+
+function contactoVacio() {
+  return {
+    uid: ++secuencia, nombre: '', parentesco: '', otroParentesco: '',
+    celular: '', alterno: '', ciudad: ''
+  };
+}
+
+/** Se registra un unico contacto de emergencia, siempre presente. */
+function pintarContactos() {
+  var cont = $('listaContactos');
+  cont.innerHTML = '';
+
+  if (contactos.length === 0) contactos.push(contactoVacio());
+  contactos.length = 1;                       // solo se registra uno
+  var c = contactos[0];
+
+  var item = crear('div', 'item');
+  var cab = crear('div', 'item-encabezado');
+  cab.appendChild(crear('span', 'item-titulo', 'Datos del contacto'));
+  item.appendChild(cab);
+
+  var rej = crear('div', 'rejilla');
+
+  rej.appendChild(campoTexto('Nombres y apellidos', 'con-nom-' + c.uid, c.nombre, true,
+    function (v) { c.nombre = v; }, 'text', vNombre('el nombre del contacto')));
+
+  rej.appendChild(campoSelect('Parentesco o relación', 'con-par-' + c.uid,
+    CONFIG.catalogos.parentescos, c.parentesco, true, function (v) {
+      c.parentesco = v;
+      pintarContactos();          // para mostrar u ocultar el campo "Cual?"
+    }));
+
+  // Si el parentesco no esta en la lista, se pregunta cual es.
+  if (c.parentesco === 'Otro') {
+    rej.appendChild(campoTexto('¿Cuál es el parentesco o relación?', 'con-otropar-' + c.uid,
+      c.otroParentesco, true, function (v) { c.otroParentesco = v; }, 'text',
+      vTexto('el parentesco')));
+  }
+
+  rej.appendChild(campoTexto('Número de celular', 'con-cel-' + c.uid, c.celular, true,
+    function (v) { c.celular = v; }, 'tel', vTelefono(true)));
+  rej.appendChild(campoTexto('Número alternativo', 'con-alt-' + c.uid, c.alterno, false,
+    function (v) { c.alterno = v; }, 'tel', vTelefono(false)));
+  rej.appendChild(campoTexto('Ciudad', 'con-ciu-' + c.uid, c.ciudad, false,
+    function (v) { c.ciudad = v; }, 'text', vCiudadLibre(false), 'listaCiudades'));
+
+  item.appendChild(rej);
+  cont.appendChild(item);
+}
+
+function agregarFormacion() {
+  if (formacion.length >= CONFIG.limites.maxFormacion) {
+    mostrarAviso('Límite alcanzado', 'No es posible registrar más de ' + CONFIG.limites.maxFormacion + ' estudios.');
+    return;
+  }
+  formacion.push({
+    uid: ++secuencia, nivel: '', tipoInstitucion: '', institucion: '',
+    titulo: '', estado: '', anio: '', ciudad: '', pais: 'Colombia'
+  });
+  pintarFormacion();
+}
+
+function pintarFormacion() {
+  var cont = $('listaFormacion');
+  cont.innerHTML = '';
+
+  formacion.forEach(function (f, i) {
+    var item = crear('div', 'item');
+
+    var cab = crear('div', 'item-encabezado');
+    cab.appendChild(crear('span', 'item-titulo', 'Estudio ' + (i + 1)));
+    if (formacion.length > 1) {
+      var quitar = crear('button', 'btn-quitar', 'Eliminar');
+      quitar.type = 'button';
+      quitar.addEventListener('click', function () {
+        mostrarConfirmacion({
+          titulo: 'Eliminar estudio',
+          mensaje: '¿Desea eliminar el estudio ' + (i + 1) + '?',
+          textoAceptar: 'Eliminar'
+        }, function () {
+          formacion.splice(i, 1);
+          pintarFormacion();
+        });
+      });
+      cab.appendChild(quitar);
+    }
+    item.appendChild(cab);
+
+    var rej = crear('div', 'rejilla');
+
+    rej.appendChild(campoSelect('Nivel de formación', 'for-niv-' + f.uid,
+      CONFIG.catalogos.nivelesFormacion, f.nivel, true, function (v) {
+        f.nivel = v;
+        pintarFormacion();
+      }));
+
+    rej.appendChild(campoSelect('Tipo de institución', 'for-tip-' + f.uid,
+      CONFIG.catalogos.tiposInstitucion, f.tipoInstitucion, true,
+      function (v) {
+        f.tipoInstitucion = v;
+        pintarFormacion();
+      }));
+
+    // La etiqueta la manda el tipo de institucion, que es el campo donde la
+    // persona acaba de declarar de que clase de institucion se trata. Mientras
+    // no lo elija se usa el nivel, que es la mejor pista disponible.
+    var etiquetaInst = esColegio(f) ? 'Nombre del colegio' : 'Nombre de la institución';
+    var campoInst = campoTexto(etiquetaInst, 'for-ins-' + f.uid, f.institucion, true,
+      function (v) { f.institucion = v; }, 'text', null, 'listaInstituciones');
+    campoInst.classList.add('ancho-total');
+    rej.appendChild(campoInst);
+
+    var campoTit = campoTexto('Título otorgado', 'for-tit-' + f.uid, f.titulo, true,
+      function (v) { f.titulo = v; });
+    campoTit.classList.add('ancho-total');
+    rej.appendChild(campoTit);
+
+    rej.appendChild(campoSelect('Estado del estudio', 'for-est-' + f.uid,
+      CONFIG.catalogos.estadosEstudio, f.estado, true, function (v) {
+        f.estado = v;
+        pintarFormacion();
+      }));
+
+    // El anio solo tiene sentido si ya se graduo, y aun asi es opcional.
+    if (f.estado === 'Graduado') {
+      rej.appendChild(campoNumero('Año de grado (opcional)', 'for-anio-' + f.uid,
+        f.anio, 1930, CONFIG.anioActual, function (v) { f.anio = v; }, vAnioGrado));
+    }
+
+    // El pais va primero porque decide como se pide la ciudad: al cambiarlo
+    // hay que repintar para que el campo de ciudad cambie de modo.
+    rej.appendChild(campoSelect('País', 'for-pais-' + f.uid,
+      CONFIG.catalogos.paises, f.pais, false, function (v) {
+        var antes = esColombia(f.pais);
+        f.pais = v;
+        if (antes !== esColombia(v)) pintarFormacion();
+      }));
+
+    // El catalogo de ciudades es colombiano. Si el titulo se obtuvo en otro
+    // pais, la ciudad pasa a ser texto libre y sin lista de sugerencias:
+    // exigirle una ciudad de Colombia no tendria sentido.
+    var enColombia = esColombia(f.pais);
+    rej.appendChild(campoTexto('Ciudad', 'for-ciu-' + f.uid, f.ciudad, false,
+      function (v) { f.ciudad = v; }, 'text',
+      enColombia ? vCiudad(false) : vCiudadLibre(false),
+      enColombia ? 'listaCiudades' : ''));
+
+    item.appendChild(rej);
+    cont.appendChild(item);
+  });
+
+  $('vacioFormacion').style.display = formacion.length ? 'none' : '';
+  $('contadorFormacion').textContent = formacion.length === 0 ? 'Ningún estudio registrado'
+    : (formacion.length === 1 ? '1 estudio registrado' : formacion.length + ' estudios registrados');
+}
+
+/* --- Constructores de campo para las listas dinamicas --- */
+
+function envoltura(etiqueta, id, obligatorio) {
+  var div = crear('div', 'campo');
+  div.id = 'campo-' + id;
+  var lab = crear('label', null, etiqueta);
+  lab.setAttribute('for', id);
+  if (obligatorio) {
+    var est = crear('span', 'obligatorio', '*');
+    lab.appendChild(est);
+  }
+  div.appendChild(lab);
+  return div;
+}
+
+function agregarError(div, id, mensaje) {
+  var p = crear('p', 'mensaje-error', mensaje);
+  p.id = 'error-' + id;
+  div.appendChild(p);
+  var control = $(id);
+  if (control) control.setAttribute('aria-describedby', p.id);
+}
+
+function campoTexto(etiqueta, id, valor, obligatorio, alEscribir, tipo, validador, listaId) {
+  var div = envoltura(etiqueta, id, obligatorio);
+  var inp = document.createElement('input');
+  inp.type = tipo || 'text';
+  inp.id = id;
+  if (listaId) inp.setAttribute('list', listaId);
+  if (obligatorio) inp.setAttribute('aria-required', 'true');
+  inp.value = valor || '';
+  inp.maxLength = 200;
+  inp.addEventListener('input', function () {
+    alEscribir(inp.value);
+    if (!validador) limpiarError(inp);
+  });
+  div.appendChild(inp);
+  agregarError(div, id, 'Este campo es obligatorio.');
+  conectarValidacion(inp, validador);
+  return div;
+}
+
+function campoNumero(etiqueta, id, valor, min, max, alEscribir, validador, obligatorio) {
+  var div = envoltura(etiqueta, id, !!obligatorio);
+  var inp = document.createElement('input');
+  inp.type = 'number';
+  inp.id = id;
+  if (obligatorio) inp.setAttribute('aria-required', 'true');
+  inp.value = valor === null || valor === undefined ? '' : valor;
+  inp.min = min;
+  inp.max = max;
+  inp.step = 1;
+  inp.addEventListener('input', function () {
+    alEscribir(inp.value);
+    if (!validador) limpiarError(inp);
+  });
+  div.appendChild(inp);
+  agregarError(div, id, 'Digite un valor entre ' + min + ' y ' + max + '.');
+  conectarValidacion(inp, validador);
+  return div;
+}
+
+function campoFecha(etiqueta, id, valor, obligatorio, alEscribir, validador) {
+  var div = envoltura(etiqueta, id, obligatorio);
+  var inp = document.createElement('input');
+  inp.type = 'date';
+  inp.id = id;
+  if (obligatorio) inp.setAttribute('aria-required', 'true');
+  inp.value = valor || '';
+  inp.max = new Date().toISOString().split('T')[0];
+  inp.min = String(new Date().getFullYear() - CONFIG.limites.edadMaximaHijo) + '-01-01';
+  inp.addEventListener('input', function () {
+    alEscribir(inp.value);
+  });
+  div.appendChild(inp);
+  agregarError(div, id, 'Indique una fecha de nacimiento válida.');
+  conectarValidacion(inp, validador);
+  return div;
+}
+
+function campoSelect(etiqueta, id, opciones, valor, obligatorio, alCambiarSel) {
+  var div = envoltura(etiqueta, id, obligatorio);
+  var sel = document.createElement('select');
+  sel.id = id;
+  if (obligatorio) sel.setAttribute('aria-required', 'true');
+  sel.appendChild(new Option('Seleccione...', ''));
+  (opciones || []).forEach(function (o) {
+    var op = new Option(o, o);
+    if (o === valor) op.selected = true;
+    sel.appendChild(op);
+  });
+  sel.addEventListener('change', function () {
+    alCambiarSel(sel.value);
+    limpiarError(sel);
+  });
+  div.appendChild(sel);
+  agregarError(div, id, 'Seleccione una opción.');
+  return div;
+}
+
+function campoOpciones(etiqueta, id, valores, valor, alElegir) {
+  var div = crear('div', 'campo');
+  div.appendChild(crear('span', 'etiqueta', etiqueta));
+  var cont = crear('div', 'opciones');
+  valores.forEach(function (v) {
+    var lab = crear('label', 'opcion' + (v === valor ? ' marcada' : ''));
+    var inp = document.createElement('input');
+    inp.type = 'radio';
+    inp.name = id;
+    inp.value = v;
+    inp.checked = (v === valor);
+    inp.addEventListener('change', function () {
+      alElegir(v);
+      $$('input[name="' + id + '"]').forEach(function (o) {
+        o.closest('.opcion').classList.toggle('marcada', o.checked);
+      });
+    });
+    lab.appendChild(inp);
+    lab.appendChild(crear('span', null, etiquetaOpcion(v)));
+    cont.appendChild(lab);
+  });
+  div.appendChild(cont);
+  return div;
+}
+
+/* ------------------------------------------------------------
+   VALIDACION EN TIEMPO REAL
+
+   Cada validador recibe el texto digitado y responde:
+     { ok: bool, mensaje: 'que esta mal', aviso: 'dato útil' }
+
+   El campo NO se marca en rojo mientras se escribe por primera vez:
+   solo despues de que la persona sale del campo. A partir de ahi si
+   se corrige en vivo, que es cuando la ayuda sirve de verdad.
+   ------------------------------------------------------------ */
+
+function soloDigitos(v) { return String(v || '').replace(/[^0-9]/g, ''); }
+
+function vTexto(etiqueta) {
+  return function (v) {
+    return String(v || '').trim()
+      ? { ok: true }
+      : { ok: false, mensaje: 'Indique ' + etiqueta + '.' };
+  };
+}
+
+function normalizarOpcion(texto) {
+  return String(texto || '').trim().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/**
+ * Decide si un estudio se cursó en un colegio, para rotular el campo del
+ * nombre. Manda el tipo de institución; si todavía no se ha elegido, se cae
+ * al nivel de formación.
+ */
+function esColegio(f) {
+  if (f.tipoInstitucion) return f.tipoInstitucion === 'Colegio';
+  return f.nivel === 'Bachiller';
+}
+
+/** El catalogo de ciudades solo cubre Colombia. Sin pais elegido se asume Colombia. */
+function esColombia(pais) {
+  return !pais || normalizarOpcion(pais) === 'colombia';
+}
+
+/**
+ * Ciudad de un estudio hecho fuera de Colombia. No se contrasta contra ningun
+ * catalogo: la persona escribe el nombre tal como es en su pais.
+ */
+function vCiudadLibre(obligatoria) {
+  return function (valor) {
+    var escrito = String(valor || '').trim();
+    if (!escrito) {
+      return obligatoria
+        ? { ok: false, mensaje: 'Indique la ciudad.' }
+        : { ok: true };
+    }
+    if (escrito.length < 2) {
+      return { ok: false, mensaje: 'El nombre de la ciudad es demasiado corto.' };
+    }
+    return { ok: true };
+  };
+}
+
+/**
+ * Nombre oficial del municipio, o cadena vacia si no se reconoce.
+ *
+ * Acepta los nombres de uso diario que el DIVIPOLA escribe de otra forma
+ * ("Bogota" por "Bogotá, D.C."). La tabla viene del servidor, que aplica la
+ * misma equivalencia: si aqui se rechazara, el servidor nunca llegaria a
+ * resolverlo.
+ */
+function ciudadOficial(escrito) {
+  var buscado = normalizarOpcion(String(escrito || '').trim());
+  if (!buscado) return '';
+
+  var lista = (CONFIG && CONFIG.catalogos.ciudades) || [];
+  for (var i = 0; i < lista.length; i++) {
+    if (normalizarOpcion(lista[i]) === buscado) return lista[i];
+  }
+
+  var alias = (CONFIG && CONFIG.aliasCiudades) || {};
+  var claves = Object.keys(alias);
+  for (var j = 0; j < claves.length; j++) {
+    if (normalizarOpcion(claves[j]) === buscado) return alias[claves[j]];
+  }
+  return '';
+}
+
+function vCiudad(obligatoria) {
+  return function (valor) {
+    var escrito = String(valor || '').trim();
+    if (!escrito) {
+      return obligatoria
+        ? { ok: false, mensaje: 'Indique la ciudad de residencia.' }
+        : { ok: true };
+    }
+    return ciudadOficial(escrito)
+      ? { ok: true }
+      : { ok: false, mensaje: 'Seleccione una ciudad válida de la lista de sugerencias.' };
+  };
+}
+
+function vNombre(etiqueta) {
+  return function (v) {
+    var t = String(v || '').trim();
+    if (!t) return { ok: false, mensaje: 'Digite ' + etiqueta + '.' };
+    if (/\d/.test(t)) return { ok: false, mensaje: 'No se admiten números en este campo.' };
+    if (t.length < 2) return { ok: false, mensaje: 'El texto es demasiado corto.' };
+    return { ok: true };
+  };
+}
+
+function vDocumento(v) {
+  var t = String(v || '').trim();
+  var limpio = t.replace(/[^0-9A-Za-z]/g, '');
+  if (!limpio) return { ok: false, mensaje: 'Digite su número de documento.' };
+  if (limpio.length < CONFIG.limites.minLongitudDocumento) {
+    return { ok: false, mensaje: 'Muy corto: lleva ' + limpio.length +
+             ' caracteres y necesita al menos ' + CONFIG.limites.minLongitudDocumento + '.' };
+  }
+  if (limpio.length > CONFIG.limites.maxLongitudDocumento) {
+    return { ok: false, mensaje: 'Excede los ' + CONFIG.limites.maxLongitudDocumento + ' caracteres.' };
+  }
+  return {
+    ok: true,
+    aviso: (limpio !== t) ? 'Se registrará sin puntos ni espacios: ' + limpio : ''
+  };
+}
+
+function vTelefono(esObligatorio) {
+  return function (v) {
+    var d = soloDigitos(v);
+    if (!d) {
+      return esObligatorio
+        ? { ok: false, mensaje: 'Digite el número.' }
+        : { ok: true };
+    }
+    var min = CONFIG.limites.minDigitosCelular;
+    var max = CONFIG.limites.maxDigitosCelular;
+    if (d.length < min) {
+      return { ok: false, mensaje: 'Lleva ' + d.length + ' dígitos; faltan ' +
+               (min - d.length) + ' para completar el mínimo.' };
+    }
+    if (d.length > max) {
+      return { ok: false, mensaje: 'Tiene ' + d.length + ' dígitos y el máximo es ' + max + '.' };
+    }
+    // En Colombia un celular son 10 digitos y empieza por 3.
+    if (d.length === 10 && d.charAt(0) !== '3') {
+      return { ok: true, aviso: 'Revise el número: los celulares en Colombia empiezan por 3.' };
+    }
+    return { ok: true };
+  };
+}
+
+/** Correo de contacto: obligatorio, y sin restriccion de dominio. */
+function vCorreoContacto(v) {
+  var t = String(v || '').trim();
+  if (!t) return { ok: false, mensaje: 'Digite su correo personal de contacto.' };
+  if (/\s/.test(t)) return { ok: false, mensaje: 'El correo no puede llevar espacios.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) {
+    return { ok: false, mensaje: 'El correo no tiene un formato válido.' };
+  }
+  return { ok: true };
+}
+
+function vCorreo(v) {
+  var t = String(v || '').trim().toLowerCase();
+  if (!t) return { ok: true };            // el correo institucional es opcional
+  if (/\s/.test(t)) return { ok: false, mensaje: 'El correo no puede llevar espacios.' };
+  if (t.indexOf('@') === -1) return { ok: false, mensaje: 'Falta el signo @.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) {
+    return { ok: false, mensaje: 'El correo no tiene un formato válido.' };
+  }
+  if (!correoPermitidoCliente(t)) {
+    return { ok: false, mensaje: 'Use un correo ' + dominiosCorreoTexto() + '.' };
+  }
+  return { ok: true };
+}
+
+function vFechaNacimiento(v) {
+  if (!v) return { ok: false, mensaje: 'Indique su fecha de nacimiento.' };
+  var partes = String(v).split('-');
+  if (partes.length !== 3) return { ok: false, mensaje: 'La fecha no es válida.' };
+  var f = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+  if (isNaN(f.getTime())) return { ok: false, mensaje: 'La fecha no es válida.' };
+  if (f > new Date()) return { ok: false, mensaje: 'La fecha no puede ser posterior a hoy.' };
+  var edad = calcularEdad(v);
+  if (edad < CONFIG.limites.edadMinimaPersona) {
+    return { ok: false, mensaje: 'La edad resultante es de ' + edad + ' años.' };
+  }
+  if (edad > CONFIG.limites.edadMaximaPersona) {
+    return { ok: false, mensaje: 'Revise el año: la edad resultante es de ' + edad + ' años.' };
+  }
+  return { ok: true };
+}
+
+function vEdadHijo(v) {
+  var t = String(v === null || v === undefined ? '' : v).trim();
+  if (!t) return { ok: false, mensaje: 'Indique la edad.' };
+  if (!/^\d{1,3}$/.test(t)) {
+    return { ok: false, mensaje: 'Digite la edad en años, en número entero.' };
+  }
+  var n = parseInt(t, 10);
+  if (n < 0 || n > CONFIG.limites.edadMaximaHijo) {
+    return { ok: false, mensaje: 'Digite una edad entre 0 y ' +
+      CONFIG.limites.edadMaximaHijo + ' años.' };
+  }
+  return { ok: true };
+}
+
+function vAnioGrado(v) {
+  var t = String(v || '').trim();
+  if (!t) return { ok: true };             // opcional
+  if (!/^\d{4}$/.test(t)) return { ok: false, mensaje: 'El año debe tener 4 dígitos.' };
+  var n = parseInt(t, 10);
+  if (n > CONFIG.anioActual) {
+    return { ok: false, mensaje: 'El año no puede ser posterior a ' + CONFIG.anioActual + '.' };
+  }
+  if (n < 1930) return { ok: false, mensaje: 'Revise el año de grado.' };
+  return { ok: true };
+}
+
+function vSeleccion(etiqueta) {
+  return function (v) {
+    return String(v || '').trim()
+      ? { ok: true }
+      : { ok: false, mensaje: 'Seleccione ' + etiqueta + '.' };
+  };
+}
+
+/** Pinta el resultado de un validador sobre el campo. */
+function aplicarEstado(el, r) {
+  var campo = el.closest('.campo, fieldset');
+  if (!campo) return;
+
+  campo.classList.toggle('con-error', !r.ok);
+  campo.classList.toggle('con-exito', !!r.ok && String(el.value || '').trim() !== '');
+  el.setAttribute('aria-invalid', r.ok ? 'false' : 'true');
+
+  if (!r.ok && r.mensaje) {
+    var p = campo.querySelector('.mensaje-error');
+    if (p) p.textContent = r.mensaje;
+  }
+
+  var ayuda = campo.querySelector('.ayuda-viva');
+  if (r.aviso) {
+    if (!ayuda) {
+      ayuda = crear('p', 'ayuda ayuda-viva');
+      el.parentNode.insertBefore(ayuda, el.nextSibling);
+    }
+    ayuda.textContent = r.aviso;
+    ayuda.hidden = false;
+  } else if (ayuda) {
+    ayuda.hidden = true;
+  }
+}
+
+/**
+ * Enlaza un campo con su validador.
+ * Se valida al salir del campo y, desde ese momento, tambien al escribir.
+ */
+function conectarValidacion(el, validador) {
+  if (!el || !validador) return;
+  var tocado = false;
+
+  el.addEventListener('blur', function () {
+    tocado = true;
+    aplicarEstado(el, validador(el.value));
+  });
+  el.addEventListener('input', function () {
+    if (tocado) aplicarEstado(el, validador(el.value));
+  });
+  el.addEventListener('change', function () {
+    if (tocado) aplicarEstado(el, validador(el.value));
+  });
+}
+
+/** Campos fijos del formulario que se validan en vivo. */
+function conectarValidaciones() {
+  conectarValidacion($('numDocumento'), vDocumento);
+  conectarValidacion($('nombres'), vNombre('sus nombres'));
+  conectarValidacion($('apellidos'), vNombre('sus apellidos'));
+  conectarValidacion($('celular'), vTelefono(true));
+  conectarValidacion($('correo'), vCorreo);
+  conectarValidacion($('correoPersonal'), vCorreoContacto);
+  conectarValidacion($('fechaNacimiento'), vFechaNacimiento);
+  conectarValidacion($('cargo'), vTexto('su cargo'));
+  conectarValidacion($('ciudadResidencia'), vCiudad(true));
+  conectarValidacion($('nombreConyuge'), vNombre('el nombre del cónyuge'));
+  conectarValidacion($('otraUnidadDirectiva'), vTexto('su unidad o dependencia'));
+  conectarValidacion($('otroFondoCesantias'), vTexto('el fondo de cesantías'));
+  conectarValidacion($('otraArl'), vTexto('la ARL'));
+  conectarValidacion($('otraOcupacionConyuge'), vTexto('la ocupación'));
+  conectarValidacion($('tipoVinculacion'), vSeleccion('su tipo de vinculación'));
+  conectarValidacion($('tipoDocumento'), vSeleccion('el tipo de documento'));
+  conectarValidacion($('estadoCivil'), vSeleccion('su estado civil'));
+  conectarValidacion($('fondoCesantias'), vSeleccion('el fondo de cesantías'));
+  conectarValidacion($('arl'), vSeleccion('la ARL'));
+  conectarValidacion($('frecuenciaDeporte'), vSeleccion('la frecuencia'));
+  conectarValidacion($('nivelFormacionMaximo'), vSeleccion('su nivel de formación'));
+  conectarValidacion($('idEscuela'), vSeleccion('la escuela'));
+  conectarValidacion($('unidadDirectiva'), vSeleccion('la unidad directiva'));
+  conectarValidacion($('idDependencia'), vSeleccion('su dependencia'));
+}
+
+/* ------------------------------------------------------------
+   VALIDACION
+   ------------------------------------------------------------ */
+
+function marcarError(id, mensaje) {
+  var campo = $('campo-' + id);
+  if (campo) {
+    campo.classList.add('con-error');
+    // Un campo no puede estar en error y validado a la vez: sin esto quedaba
+    // el borde verde de 'con-exito' sobre el fondo rojo de 'con-error'.
+    campo.classList.remove('con-exito');
+    var control = campo.querySelector('input, select, textarea');
+    if (control) control.setAttribute('aria-invalid', 'true');
+    if (mensaje) {
+      var p = $('error-' + id);
+      if (p) p.textContent = mensaje;
+    }
+  }
+  return false;
+}
+
+function limpiarError(el) {
+  var campo = el.closest ? el.closest('.campo, fieldset') : null;
+  if (campo) campo.classList.remove('con-error');
+  if (el && el.setAttribute) el.setAttribute('aria-invalid', 'false');
+}
+
+function limpiarErroresPaso(n) {
+  ocultarResumenErrores();
+  var seccion = document.querySelector('.paso[data-paso="' + n + '"]');
+  if (!seccion) return;
+  $$('.con-error', seccion).forEach(function (c) { c.classList.remove('con-error'); });
+  $$('.mensaje-error', seccion).forEach(function (p) {
+    if (p.id === 'error-hijos' || p.id === 'error-contactos' ||
+        p.id === 'error-formacion' || p.id === 'error-deportes') {
+      p.style.display = 'none';
+    }
+  });
+}
+
+function enfocarPrimerError(n) {
+  mostrarResumenErrores(n);
+  var seccion = document.querySelector('.paso[data-paso="' + n + '"]');
+  var primero = seccion ? seccion.querySelector('.con-error') : null;
+  if (!primero) return;
+  primero.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  var campo = primero.querySelector('input, select, textarea');
+  if (campo && campo.matches('select.selector-nativo-oculto')) {
+    campo = campo.parentElement.querySelector('.selector-boton');
+  }
+  if (campo) setTimeout(function () { campo.focus({ preventScroll: true }); }, 300);
+  anunciar('Hay campos por corregir en este paso.');
+}
+
+function obligatorio(id, mensaje) {
+  if (!valorDe(id)) return marcarError(id, mensaje);
+  return true;
+}
+
+function sinNumeros(id, mensaje) {
+  var v = valorDe(id);
+  if (!v) return marcarError(id, mensaje);
+  if (/\d/.test(v)) return marcarError(id, 'No se admiten números en este campo.');
+  return true;
+}
+
+function telefonoValido(id, obligatorioSN) {
+  var v = valorDe(id).replace(/[^0-9]/g, '');
+  if (!v) return obligatorioSN ? marcarError(id, 'Este campo es obligatorio.') : true;
+  if (v.length < CONFIG.limites.minDigitosCelular || v.length > CONFIG.limites.maxDigitosCelular) {
+    return marcarError(id, 'El número no tiene una cantidad válida de dígitos.');
+  }
+  return true;
+}
+
+function validarPaso(n) {
+  limpiarErroresPaso(n);
+  var ok = true;
+
+  if (n === 1) {
+    var respuesta = marcadoUnico('autorizaDatos');
+    if (!respuesta) {
+      marcarError('autorizaDatos', 'Debe responder si autoriza el tratamiento de sus datos.');
+      ok = false;
+    } else if (respuesta !== CONFIG.textos.opcionAcepta) {
+      marcarError('autorizaDatos',
+        'Sin la autorización de tratamiento de datos no es posible continuar.');
+      ok = false;
+    }
+  }
+
+  if (n === 2) {
+    ok = obligatorio('tipoVinculacion') && ok;
+    if (!esDocente()) ok = obligatorio('cargo') && ok;
+    ok = obligatorio('tipoDocumento') && ok;
+
+    var doc = valorDe('numDocumento').replace(/[^0-9A-Za-z]/g, '');
+    if (doc.length < CONFIG.limites.minLongitudDocumento ||
+        doc.length > CONFIG.limites.maxLongitudDocumento) {
+      marcarError('numDocumento', 'Digite un número de documento válido.');
+      ok = false;
+    }
+
+    ok = sinNumeros('nombres', 'Digite sus nombres.') && ok;
+    ok = sinNumeros('apellidos', 'Digite sus apellidos.') && ok;
+
+    var fn = valorDe('fechaNacimiento');
+    if (!fn) {
+      marcarError('fechaNacimiento', 'Indique su fecha de nacimiento.');
+      ok = false;
+    } else {
+      var edad = calcularEdad(fn);
+      if (edad < CONFIG.limites.edadMinimaPersona || edad > CONFIG.limites.edadMaximaPersona) {
+        marcarError('fechaNacimiento', 'La fecha no corresponde a una edad válida.');
+        ok = false;
+      }
+    }
+
+    ok = telefonoValido('celular', true) && ok;
+
+    var correo = valorDe('correo');
+    if (!correoPermitidoCliente(correo)) {
+      marcarError('correo', 'Use un correo ' + dominiosCorreoTexto() + ' válido.');
+      ok = false;
+    }
+
+    var contacto = vCorreoContacto(valorDe('correoPersonal'));
+    if (!contacto.ok) {
+      marcarError('correoPersonal', contacto.mensaje);
+      ok = false;
+    }
+  }
+
+  if (n === 3) {
+    if (!valorDe('tipoVinculacion')) {
+      mostrarErrorGeneral('Primero indique su tipo de vinculación en el paso 2.');
+      ok = false;
+    } else {
+      if (tieneDocencia()) {
+        ok = obligatorio('idEscuela', 'Seleccione la escuela a la que pertenece.') && ok;
+      }
+      if (tieneAdministracion()) {
+        var unidad = valorDe('unidadDirectiva');
+        if (!unidad) {
+          marcarError('unidadDirectiva');
+          ok = false;
+        } else if (unidad === OPCION_OTRA_UNIDAD) {
+          ok = obligatorio('otraUnidadDirectiva', 'Indique la unidad a la que pertenece.') && ok;
+        } else {
+          ok = obligatorio('idDependencia', 'Seleccione su dependencia.') && ok;
+        }
+      }
+    }
+  }
+
+  if (n === 4) {
+    var rCiudad = vCiudad(true)(valorDe('ciudadResidencia'));
+    if (!rCiudad.ok) { marcarError('ciudadResidencia', rCiudad.mensaje); ok = false; }
+  }
+
+  if (n === 5) {
+    ok = obligatorio('estadoCivil') && ok;
+
+    if (!marcadoUnico('tieneConyuge')) { marcarError('tieneConyuge'); ok = false; }
+    else if (marcadoUnico('tieneConyuge') === 'Si') {
+      ok = sinNumeros('nombreConyuge', 'Digite el nombre del cónyuge.') && ok;
+      ok = obligatorio('ocupacionConyuge') && ok;
+      if (valorDe('ocupacionConyuge') === 'Otra') {
+        ok = obligatorio('otraOcupacionConyuge', 'Especifique la ocupación.') && ok;
+      }
+    }
+
+    if (!marcadoUnico('tieneHijos')) { marcarError('tieneHijos'); ok = false; }
+    else if (marcadoUnico('tieneHijos') === 'Si') {
+      if (hijos.length === 0) {
+        $('error-hijos').style.display = 'block';
+        ok = false;
+      } else {
+        hijos.forEach(function (h) {
+          if (!String(h.nombre || '').trim()) { marcarError('hijo-nombre-' + h.uid); ok = false; }
+          var rEdad = vEdadHijo(h.edad);
+          if (!rEdad.ok) {
+            marcarError('hijo-edad-' + h.uid, rEdad.mensaje);
+            ok = false;
+          }
+        });
+      }
+    }
+  }
+
+  if (n === 6) {
+    if (!contactos.length) {
+      $('error-contactos').style.display = 'block';
+      ok = false;
+    } else {
+      contactos.forEach(function (c) {
+        if (!String(c.nombre || '').trim() || /\d/.test(c.nombre)) {
+          marcarError('con-nom-' + c.uid, 'Digite el nombre, sin números.');
+          ok = false;
+        }
+        if (!String(c.parentesco || '').trim()) {
+          marcarError('con-par-' + c.uid);
+          ok = false;
+        } else if (c.parentesco === 'Otro' && !String(c.otroParentesco || '').trim()) {
+          marcarError('con-otropar-' + c.uid, 'Indique cuál es el parentesco.');
+          ok = false;
+        }
+        ok = telefonoValido('con-cel-' + c.uid, true) && ok;
+        ok = telefonoValido('con-alt-' + c.uid, false) && ok;
+        var rCiudadContacto = vCiudadLibre(false)(c.ciudad);
+        if (!rCiudadContacto.ok) { marcarError('con-ciu-' + c.uid, rCiudadContacto.mensaje); ok = false; }
+      });
+    }
+  }
+
+  if (n === 7) {
+    ok = obligatorio('fondoCesantias') && ok;
+    if (valorDe('fondoCesantias') === 'Otro') {
+      ok = obligatorio('otroFondoCesantias', 'Especifique el fondo.') && ok;
+    }
+    ok = obligatorio('arl', 'Seleccione la ARL.') && ok;
+    if (valorDe('arl') === 'Otra') {
+      ok = obligatorio('otraArl', 'Especifique la ARL.') && ok;
+    }
+  }
+
+  if (n === 8) {
+    if (!marcadoUnico('practicaDeporte')) { marcarError('practicaDeporte'); ok = false; }
+    else if (marcadoUnico('practicaDeporte') === 'Si') {
+      if (listaDeportes().length === 0) {
+        $('error-deportes').style.display = 'block';
+        ok = false;
+      }
+      if (marcados('deportes').indexOf('Otro') !== -1 && !valorDe('otrosDeportes')) {
+        ok = marcarError('otrosDeportes', 'Indique cuál deporte o actividad practica.') && ok;
+      }
+      ok = obligatorio('frecuenciaDeporte') && ok;
+    }
+    if (!marcadoUnico('interesActividades')) { marcarError('interesActividades'); ok = false; }
+  }
+
+  if (n === 9) {
+    ok = obligatorio('nivelFormacionMaximo') && ok;
+    if (formacion.length === 0) {
+      $('error-formacion').style.display = 'block';
+      ok = false;
+    }
+    formacion.forEach(function (f) {
+      if (!f.nivel) { marcarError('for-niv-' + f.uid); ok = false; }
+      if (!f.tipoInstitucion) { marcarError('for-tip-' + f.uid); ok = false; }
+      if (!String(f.institucion || '').trim()) { marcarError('for-ins-' + f.uid); ok = false; }
+      if (!String(f.titulo || '').trim()) { marcarError('for-tit-' + f.uid); ok = false; }
+      if (!f.estado) { marcarError('for-est-' + f.uid); ok = false; }
+      if (f.estado === 'Graduado' && String(f.anio || '').trim()) {
+        var a = parseInt(f.anio, 10);
+        if (isNaN(a) || a < 1930 || a > CONFIG.anioActual) {
+          marcarError('for-anio-' + f.uid, 'Digite un año válido de 4 dígitos.');
+          ok = false;
+        }
+      }
+      var rCiudadEstudio = (esColombia(f.pais) ? vCiudad(false) : vCiudadLibre(false))(f.ciudad);
+      if (!rCiudadEstudio.ok) { marcarError('for-ciu-' + f.uid, rCiudadEstudio.mensaje); ok = false; }
+    });
+  }
+
+  if (n === 10) {
+    if (!$('confirmaInformacion').checked) { marcarError('confirmaInformacion'); ok = false; }
+  }
+
+  if (!ok) enfocarPrimerError(n);
+  return ok;
+}
+
+function calcularEdad(iso) {
+  var p = iso.split('-');
+  var nac = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  var hoy = new Date();
+  var edad = hoy.getFullYear() - nac.getFullYear();
+  var m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  return edad;
+}
+
+function listaDeportes() {
+  var elegidos = marcados('deportes');
+  // "Otro" no se guarda como deporte: se guarda lo que la persona escribio.
+  var lista = elegidos.filter(function (d) { return d !== 'Otro'; });
+  if (elegidos.indexOf('Otro') !== -1) {
+    valorDe('otrosDeportes').split(',')
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean)
+      .forEach(function (d) { if (lista.indexOf(d) === -1) lista.push(d); });
+  }
+  return lista;
+}
+
+/* ------------------------------------------------------------
+   RECOLECCION
+   ------------------------------------------------------------ */
+
+function recolectar() {
+  var unidad = valorDe('unidadDirectiva');
+  var esOtra = unidad === OPCION_OTRA_UNIDAD;
+
+  return {
+    // Lo entrega el servidor al abrir la pagina; sin el no acepta el envio.
+    pase: CONFIG.pase,
+
+    autorizaDatos: marcadoUnico('autorizaDatos') === CONFIG.textos.opcionAcepta,
+    confirmaInformacion: $('confirmaInformacion').checked,
+
+    tipoVinculacion: valorDe('tipoVinculacion'),
+    tipoDocumento: valorDe('tipoDocumento'),
+    numDocumento: valorDe('numDocumento'),
+    nombres: valorDe('nombres'),
+    apellidos: valorDe('apellidos'),
+    fechaNacimiento: valorDe('fechaNacimiento'),
+    celular: valorDe('celular'),
+    correo: valorDe('correo'),
+    correoPersonal: valorDe('correoPersonal'),
+    cargo: esDocente() ? '' : valorDe('cargo'),
+
+    unidadDirectiva: tieneAdministracion() ? (esOtra ? 'Otra' : unidad) : '',
+    idDependencia: tieneAdministracion() && !esOtra ? valorDe('idDependencia') : '',
+    idDependenciaDocente: tieneDocencia() ? valorDe('idEscuela') : '',
+    otraUnidadDirectiva: tieneAdministracion() && esOtra ? valorDe('otraUnidadDirectiva') : '',
+
+    ciudadResidencia: valorDe('ciudadResidencia'),
+    direccion: valorDe('direccion'),
+
+    estadoCivil: valorDe('estadoCivil'),
+    tieneConyuge: marcadoUnico('tieneConyuge'),
+    nombreConyuge: valorDe('nombreConyuge'),
+    ocupacionConyuge: valorDe('ocupacionConyuge'),
+    otraOcupacionConyuge: valorDe('otraOcupacionConyuge'),
+
+    tieneHijos: marcadoUnico('tieneHijos'),
+    hijos: marcadoUnico('tieneHijos') === 'Si'
+      ? hijos.map(function (h) {
+          return { nombre: h.nombre, edad: h.edad, depende: h.depende };
+        })
+      : [],
+
+    contactos: contactos.map(function (c) {
+      return {
+        nombre: c.nombre, parentesco: c.parentesco, otroParentesco: c.otroParentesco,
+        celular: c.celular, alterno: c.alterno, ciudad: c.ciudad
+      };
+    }),
+
+    fondoCesantias: valorDe('fondoCesantias'),
+    otroFondoCesantias: valorDe('otroFondoCesantias'),
+    arl: valorDe('arl'),
+    otraArl: valorDe('otraArl'),
+
+    pasatiempos: marcados('pasatiempos'),
+    otroPasatiempo: valorDe('otroPasatiempo'),
+    practicaDeporte: marcadoUnico('practicaDeporte'),
+    deportes: marcadoUnico('practicaDeporte') === 'Si' ? listaDeportes() : [],
+    frecuenciaDeporte: valorDe('frecuenciaDeporte'),
+    interesActividades: marcadoUnico('interesActividades'),
+    actividadesInteres: marcados('actividadesInteres'),
+
+    nivelFormacionMaximo: valorDe('nivelFormacionMaximo'),
+    formacion: formacion.map(function (f) {
+      return {
+        nivel: f.nivel, tipoInstitucion: f.tipoInstitucion, institucion: f.institucion,
+        titulo: f.titulo, estado: f.estado, anio: f.anio, ciudad: f.ciudad, pais: f.pais
+      };
+    })
+  };
+}
+
+/* ------------------------------------------------------------
+   RESUMEN
+   ------------------------------------------------------------ */
+
+function construirResumen() {
+  var d = recolectar();
+  var cont = $('resumen');
+  cont.innerHTML = '';
+
+  var dep = $('idDependencia').selectedOptions[0];
+  var nombreDep = dep && dep.value ? dep.textContent : '';
+  var esc = $('idEscuela').selectedOptions[0];
+  var nombreEsc = esc && esc.value ? esc.textContent : '';
+
+  var filasIdentificacion = [
+    ['Tipo de vinculación', d.tipoVinculacion]
+  ];
+  if (!esDocente()) filasIdentificacion.push(['Cargo', d.cargo]);
+  filasIdentificacion = filasIdentificacion.concat([
+    ['Documento', d.tipoDocumento + ' ' + d.numDocumento],
+    ['Nombre completo', d.nombres + ' ' + d.apellidos],
+    ['Fecha de nacimiento', formatearFecha(d.fechaNacimiento)],
+    ['Celular', d.celular]
+  ]);
+  if (d.correo) {
+    filasIdentificacion.push(['Correo institucional', d.correo]);
+  }
+  if (d.correoPersonal) {
+    filasIdentificacion.push(['Correo personal de contacto', d.correoPersonal]);
+  }
+  bloque(cont, 'Identificación y vinculación', 2, filasIdentificacion);
+
+  var adscripcion = [];
+  if (tieneAdministracion()) {
+    adscripcion.push(['Unidad directiva', d.otraUnidadDirectiva ? 'Otra' : d.unidadDirectiva]);
+    adscripcion.push(['Dependencia administrativa', d.otraUnidadDirectiva || nombreDep]);
+  }
+  if (tieneDocencia()) adscripcion.push(['Escuela', nombreEsc]);
+  bloque(cont, 'Adscripción institucional', 3, adscripcion);
+
+  bloque(cont, 'Residencia', 4, [
+    ['Ciudad', d.ciudadResidencia],
+    ['Dirección', d.direccion]
+  ]);
+
+  var familia = [
+    ['Estado civil', d.estadoCivil],
+    ['Tiene cónyuge', etiquetaOpcion(d.tieneConyuge)]
+  ];
+  if (d.tieneConyuge === 'Si') {
+    familia.push(['Nombre del cónyuge', d.nombreConyuge]);
+    familia.push(['Ocupacion', d.otraOcupacionConyuge || d.ocupacionConyuge]);
+  }
+  familia.push(['Tiene hijos', etiquetaOpcion(d.tieneHijos)]);
+  d.hijos.forEach(function (h, i) {
+    familia.push(['Hijo(a) ' + (i + 1),
+      h.nombre + ' - ' + h.edad + (String(h.edad) === '1' ? ' año' : ' años') + ' - ' +
+      (h.depende === 'Si' ? 'depende económicamente' : 'no depende económicamente')]);
+  });
+  bloque(cont, 'Información familiar', 5, familia);
+
+  var filasContactos = [];
+  d.contactos.forEach(function (ce, i) {
+    filasContactos.push(['Contacto ' + (i + 1), ce.nombre + ' · ' +
+      (ce.parentesco === 'Otro' ? ce.otroParentesco : ce.parentesco) + ' · ' + ce.celular]);
+  });
+  bloque(cont, 'Contactos de emergencia', 6, filasContactos);
+
+  bloque(cont, 'Seguridad social', 7, [
+    ['Fondo de cesantías', d.otroFondoCesantias || d.fondoCesantias],
+    ['ARL', d.otraArl || d.arl]
+  ]);
+
+  bloque(cont, 'Pasatiempos y actividad física', 8, [
+    ['Pasatiempos', d.pasatiempos.join(', ') + (d.otroPasatiempo ? ', ' + d.otroPasatiempo : '')],
+    ['Practica deporte', etiquetaOpcion(d.practicaDeporte)],
+    ['Deportes', d.deportes.join(', ')],
+    ['Frecuencia', d.frecuenciaDeporte],
+    ['Interés en actividades', etiquetaOpcion(d.interesActividades)],
+    ['Actividades de interés', d.actividadesInteres.join(', ')]
+  ]);
+
+  var estudios = [['Nivel más alto alcanzado', d.nivelFormacionMaximo]];
+  d.formacion.forEach(function (f, i) {
+    estudios.push(['Estudio ' + (i + 1),
+      f.titulo + ' - ' + f.institucion + ' (' + f.estado +
+      (f.anio ? ', ' + f.anio : '') + ')']);
+  });
+  bloque(cont, 'Formación académica', 9, estudios);
+}
+
+function bloque(contenedor, titulo, paso, filas) {
+  var b = crear('div', 'resumen-bloque');
+
+  var cab = crear('div', 'resumen-encabezado');
+  cab.appendChild(crear('span', null, titulo));
+  var btn = crear('button', 'btn-corregir', 'Corregir');
+  btn.type = 'button';
+  btn.setAttribute('aria-label', 'Corregir ' + titulo);
+  btn.addEventListener('click', function () { irAPaso(paso); });
+  cab.appendChild(btn);
+  b.appendChild(cab);
+
+  var cuerpo = crear('div', 'resumen-cuerpo');
+  filas.filter(function (f) {
+    return String(f[1] === null || f[1] === undefined ? '' : f[1]).trim();
+  }).forEach(function (f) {
+    var fila = crear('div', 'resumen-fila');
+    fila.appendChild(crear('span', 'resumen-etiqueta', f[0]));
+    var v = String(f[1] === null || f[1] === undefined ? '' : f[1]).trim();
+    fila.appendChild(crear('span', 'resumen-valor' + (v ? '' : ' resumen-vacio'),
+      v || 'Sin registrar'));
+    cuerpo.appendChild(fila);
+  });
+  b.appendChild(cuerpo);
+
+  contenedor.appendChild(b);
+}
+
+function formatearFecha(iso) {
+  if (!iso) return '';
+  var p = iso.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+}
+
+/* ------------------------------------------------------------
+   SALIDA DE LA PAGINA
+   ------------------------------------------------------------ */
+
+function hayDatos() {
+  return !!(valorDe('numDocumento') || valorDe('nombres'));
+}
+
+/* ------------------------------------------------------------
+   ENVIO
+   ------------------------------------------------------------ */
+
+function enviar() {
+  if (enviando) return;
+
+  // Se revalidan todos los pasos: alguien pudo saltar con el boton Corregir.
+  for (var i = 1; i <= TOTAL_PASOS; i++) {
+    if (!validarPaso(i)) {
+      irAPaso(i);
+      mostrarErrorGeneral('Hay información por corregir en el paso ' + i +
+                          ' (' + NOMBRES_PASOS[i] + ').');
+      return;
+    }
+  }
+
+  enviando = true;
+  $('btnEnviar').disabled = true;
+  $('avisoError').style.display = 'none';
+  $('textoCarga').textContent = 'Guardando su información...';
+  $('capaCarga').classList.add('visible');
+
+  llamarServidor('guardarFormulario', recolectar(), alResponder, function (err) {
+    alResponder({ success: false, mensaje: (err && err.message) || SIN_CONEXION });
+  });
+}
+
+function alResponder(r) {
+  $('capaCarga').classList.remove('visible');
+
+  if (!r || !r.success) {
+    enviando = false;
+    $('btnEnviar').disabled = false;
+    mostrarErrorGeneral(r && r.mensaje ? r.mensaje
+      : 'No fue posible guardar la información.');
+    return;
+  }
+
+  $('formulario').style.display = 'none';
+  $('zonaProgreso').style.display = 'none';
+  $('avisoError').style.display = 'none';
+
+  pintarPantallaFinal(r);
+
+  $('pantallaFinal').style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  anunciar('Registro guardado correctamente.');
+}
+
+/* ------------------------------------------------------------
+   PANTALLA DE CONFIRMACION
+   ------------------------------------------------------------ */
+
+/**
+ * Arma la pantalla final con los textos de Config.gs y la constancia que
+ * devuelve el servidor: radicado, fecha de envio y correo registrado.
+ */
+function pintarPantallaFinal(r) {
+  var t = CONFIG.textos;
+
+  $('rotuloFinal').textContent = t.finalRotulo;
+  $('tituloFinal').textContent = t.finalTitulo;
+  $('mensajeFinal').textContent = t.finalMensaje;
+
+  $('numeroRadicado').textContent = r.radicado || '—';
+  $('fechaRecepcion').textContent = r.fechaRegistro || '—';
+  $('correoRegistrado').textContent = r.correo || valorDe('correo') || '—';
+
+  var lista = $('listaQueSigue');
+  lista.innerHTML = '';
+  (t.finalPasos || []).forEach(function (paso, i) {
+    var li = document.createElement('li');
+    var num = crear('span', 'final-num');
+    num.textContent = (i < 9 ? '0' : '') + (i + 1);
+    li.appendChild(num);
+    li.appendChild(textoDelPaso(paso));
+    lista.appendChild(li);
+  });
+
+  $('notaPie').textContent = t.finalNota;
+}
+
+/** La marca {correo} del texto se convierte en un enlace de correo. */
+function textoDelPaso(paso) {
+  var cont = document.createElement('span');
+  var partes = String(paso.texto).split('{correo}');
+
+  cont.appendChild(document.createTextNode(partes[0]));
+
+  if (partes.length > 1 && paso.correo) {
+    var enlace = document.createElement('a');
+    enlace.href = 'mailto:' + paso.correo;
+    enlace.textContent = paso.correo;
+    cont.appendChild(enlace);
+    cont.appendChild(document.createTextNode(partes[1] || ''));
+  }
+
+  return cont;
+}
+
+function cancelar() {
+  mostrarConfirmacion({
+    titulo: 'Cancelar formulario',
+    mensaje: 'Se perderá la información que todavía no haya enviado.',
+    textoAceptar: 'Sí, cancelar'
+  }, function () {
+    enviando = true;              // evita la alerta de salida del navegador
+    window.location.reload();
+  });
+}
+
+function mostrarErrorGeneral(mensaje) {
+  var el = $('avisoError');
+  el.textContent = mensaje;
+  el.style.display = '';
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  anunciar(mensaje);
+}
+</script>
+
+</body>
+</html>
