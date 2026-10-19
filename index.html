@@ -5,14 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Un formulario con datos del personal no debe aparecer en buscadores. -->
   <meta name="robots" content="noindex, nofollow">
-  <!-- La pagina solo puede cargar las fuentes y hablar con Apps Script: si
-       alguien lograra inyectarle codigo, no tendria a donde mandar los datos. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
+  <!-- Recursos autorizados del formulario y del control de acceso Turnstile. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com; base-uri 'none'; form-action 'none'">
   <title>Actualización de Datos del Personal - UNIMETA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&amp;display=swap">
   <style>
+[hidden] { display: none !important; }
+.acceso-seguridad { max-width: 620px; margin: 32px auto; }
+.acceso-seguridad h2 { margin-bottom: 12px; }
+.turnstile-contenedor { max-width: 100%; margin: 12px 0; }
+.turnstile-contenedor:empty { margin: 0; }
+.verificacion-envio { margin: 16px 0; }
+.verificacion-envio p:empty { display: none; }
 /* ============================================================
    Styles.html
    Actualizacion de Datos del Personal - UNIMETA
@@ -653,6 +659,8 @@ legend {
   padding-left: 16px;
   margin: 4px 0 20px;
 }
+.condicional.rejilla.visible { display: grid; }
+.final-acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 
 @keyframes desplegar {
   from { opacity: 0; }
@@ -1101,6 +1109,7 @@ body.modal-abierto { overflow: hidden; }
   .navegacion button { width: 100%; }
   .correo-acciones { grid-template-columns: 1fr; }
   .correo-acciones button { width: 100%; }
+  .final-acciones button { width: 100%; }
   .texto-legal { max-height: none; overflow: visible; }
   .tira-celda { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--color-borde); }
   .tira-celda:last-child { border-bottom: 0; }
@@ -1121,10 +1130,16 @@ body.modal-abierto { overflow: hidden; }
   }
 }
 
+#constanciaImpresion { display: none; }
+
 @media print {
-  .encabezado, .progreso-zona, .riel, .navegacion, .capa-carga { display: none !important; }
-  main { display: block; }
-  .tarjeta { border: 1px solid #999; }
+  body > *:not(#constanciaImpresion) { display: none !important; }
+  #constanciaImpresion { display: block !important; color: #111; background: #fff; }
+  #constanciaImpresion h1 { font-size: 20pt; margin: 0 0 12px; }
+  #constanciaImpresion > p { margin: 4px 0; }
+  #constanciaImpresion .resumen-bloque { break-inside: avoid; margin-top: 16px; }
+  #constanciaImpresion .resumen-encabezado { color: #111; }
+  @page { size: A4; margin: 15mm; }
 }
 </style>
 
@@ -1161,7 +1176,15 @@ body.modal-abierto { overflow: hidden; }
 </header>
 <div class="franja" aria-hidden="true"></div>
 
-<div class="progreso-zona" id="zonaProgreso">
+<section class="tarjeta acceso-seguridad" id="verificacionAcceso" aria-labelledby="tituloAcceso">
+  <h2 id="tituloAcceso">Verificación de acceso</h2>
+  <p id="estadoAcceso" role="status">Verificando acceso al formulario…</p>
+  <div id="turnstileEntrada" class="turnstile-contenedor"></div>
+  <button type="button" class="btn-secundario" id="btnReintentarAcceso" hidden>Volver a intentar</button>
+  <noscript>Active JavaScript en su navegador para verificar el acceso y diligenciar el formulario.</noscript>
+</section>
+
+<div class="progreso-zona" id="zonaProgreso" hidden>
   <div class="progreso-interno">
     <div class="progreso-etiquetas">
       <span id="indicadorPaso">Paso 1 de 10</span>
@@ -1178,7 +1201,7 @@ body.modal-abierto { overflow: hidden; }
   </div>
 </div>
 
-<main id="contenido">
+<main id="contenido" hidden>
 
   <!-- Riel de secciones: solo visual, se sincroniza desde irAPaso() -->
   <nav class="riel" id="rielPasos" aria-label="Secciones del formulario">
@@ -1293,6 +1316,40 @@ body.modal-abierto { overflow: hidden; }
         <label for="fechaNacimiento">Fecha de nacimiento<span class="obligatorio">*</span></label>
         <input type="date" id="fechaNacimiento">
         <p class="mensaje-error" id="error-fechaNacimiento">Indique una fecha de nacimiento válida.</p>
+      </div>
+
+      <div class="campo" id="campo-rh">
+        <label for="rh">RH (grupo sanguíneo y factor)<span class="obligatorio">*</span></label>
+        <select id="rh">
+          <option value="">Seleccione...</option>
+          <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+          <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+        </select>
+        <p class="mensaje-error" id="error-rh">Seleccione su RH.</p>
+      </div>
+
+      <div class="campo" id="campo-genero">
+        <label for="genero">Género<span class="obligatorio">*</span></label>
+        <select id="genero">
+          <option value="">Seleccione...</option>
+          <option>Femenino</option><option>Masculino</option>
+          <option>No binario</option><option>Otro</option><option>Prefiero no responder</option>
+        </select>
+        <p class="mensaje-error" id="error-genero">Seleccione su género.</p>
+      </div>
+
+      <div class="condicional ancho-total" id="cond-libreta">
+        <fieldset id="campo-tieneLibretaMilitar">
+          <legend>¿Tiene libreta militar?<span class="obligatorio">*</span></legend>
+          <div class="opciones" data-radio="tieneLibretaMilitar" data-valores="Si|No"></div>
+          <p class="mensaje-error" id="error-tieneLibretaMilitar">Indique si tiene libreta militar.</p>
+        </fieldset>
+        <div class="condicional rejilla" id="cond-datosLibreta">
+          <div class="campo" id="campo-numeroLibreta"><label for="numeroLibreta">Número de libreta<span class="obligatorio">*</span></label><input id="numeroLibreta" type="text" maxlength="50"><p class="mensaje-error" id="error-numeroLibreta">Indique el número de libreta.</p></div>
+          <div class="campo" id="campo-expedidaEn"><label for="expedidaEn">Expedida en<span class="obligatorio">*</span></label><input id="expedidaEn" type="text" maxlength="150"><p class="mensaje-error" id="error-expedidaEn">Indique dónde fue expedida.</p></div>
+          <div class="campo" id="campo-claseLibreta"><label for="claseLibreta">Clase<span class="obligatorio">*</span></label><select id="claseLibreta"><option value="">Seleccione...</option><option>Primera</option><option>Segunda</option></select><p class="mensaje-error" id="error-claseLibreta">Seleccione la clase.</p></div>
+          <div class="campo" id="campo-distritoMilitar"><label for="distritoMilitar">Distrito militar<span class="obligatorio">*</span></label><input id="distritoMilitar" type="text" maxlength="100"><p class="mensaje-error" id="error-distritoMilitar">Indique el distrito militar.</p></div>
+        </div>
       </div>
 
       <div class="campo" id="campo-celular">
@@ -1454,6 +1511,9 @@ body.modal-abierto { overflow: hidden; }
           <input type="text" id="otraOcupacionConyuge" maxlength="150">
           <p class="mensaje-error" id="error-otraOcupacionConyuge">Especifique la ocupación.</p>
         </div>
+        <div class="campo" id="campo-nivelFormacionConyuge"><label for="nivelFormacionConyuge">Nivel de formación del cónyuge<span class="obligatorio">*</span></label><select id="nivelFormacionConyuge" data-catalogo="nivelesFormacion"><option value="">Seleccione...</option></select><p class="mensaje-error" id="error-nivelFormacionConyuge">Seleccione el nivel de formación.</p></div>
+        <div class="campo" id="campo-tituloConyuge"><label for="tituloConyuge">Título obtenido o estudio en curso<span class="obligatorio">*</span></label><input id="tituloConyuge" type="text" maxlength="200"><p class="mensaje-error" id="error-tituloConyuge">Indique el título o estudio.</p></div>
+        <div class="campo ancho-total" id="campo-institucionConyuge"><label for="institucionConyuge">Institución educativa<span class="obligatorio">*</span></label><input id="institucionConyuge" type="text" maxlength="200"><p class="mensaje-error" id="error-institucionConyuge">Indique la institución.</p></div>
       </div>
     </div>
 
@@ -1514,7 +1574,12 @@ body.modal-abierto { overflow: hidden; }
        ======================================================== -->
   <section class="paso tarjeta" data-paso="7" aria-labelledby="t7">
     <h2 class="paso-titulo" id="t7">Seguridad social</h2>
-    <p class="paso-descripcion">Fondo de cesantías y administradora de riesgos laborales.</p>
+    <p class="paso-descripcion">Entidades de salud, pensiones, cesantías y riesgos laborales.</p>
+
+    <div class="rejilla">
+      <div class="campo" id="campo-eps"><label for="eps">EPS<span class="obligatorio">*</span></label><input id="eps" type="text" maxlength="150"><p class="mensaje-error" id="error-eps">Indique su EPS.</p></div>
+      <div class="campo" id="campo-fondoPensiones"><label for="fondoPensiones">Fondo de pensiones<span class="obligatorio">*</span></label><input id="fondoPensiones" type="text" maxlength="150"><p class="mensaje-error" id="error-fondoPensiones">Indique su fondo de pensiones.</p></div>
+    </div>
 
     <div class="campo" id="campo-fondoCesantias">
       <label for="fondoCesantias">Fondo de cesantías<span class="obligatorio">*</span></label>
@@ -1607,6 +1672,13 @@ body.modal-abierto { overflow: hidden; }
       </div>
     </div>
 
+    <h3 class="subtitulo">Actividad cultural o artística</h3>
+    <fieldset id="campo-practicaActividadCultural">
+      <legend>¿Practica alguna actividad cultural o artística?<span class="obligatorio">*</span></legend>
+      <div class="opciones" data-radio="practicaActividadCultural" data-valores="Si|No"></div>
+      <p class="mensaje-error" id="error-practicaActividadCultural">Indique si practica alguna actividad cultural o artística.</p>
+    </fieldset>
+
     <h3 class="subtitulo">Actividades institucionales</h3>
 
     <fieldset id="campo-interesActividades">
@@ -1638,7 +1710,7 @@ body.modal-abierto { overflow: hidden; }
        ======================================================== -->
   <section class="paso tarjeta" data-paso="9" aria-labelledby="t9">
     <h2 class="paso-titulo" id="t9">Formación académica</h2>
-    <p class="paso-descripcion">Registre sus estudios, desde el bachillerato hasta el nivel más alto alcanzado.</p>
+    <p class="paso-descripcion">Registre toda su formación académica: los títulos obtenidos y los estudios que actualmente adelanta o tiene en curso.</p>
 
     <div class="campo" id="campo-nivelFormacionMaximo">
       <label for="nivelFormacionMaximo">Nivel de formación más alto alcanzado<span class="obligatorio">*</span></label>
@@ -1681,6 +1753,11 @@ body.modal-abierto { overflow: hidden; }
     </p>
 
     <div id="resumen"></div>
+
+    <div class="verificacion-envio">
+      <p id="estadoVerificacionEnvio" role="status"></p>
+      <div id="turnstileEnvio" class="turnstile-contenedor"></div>
+    </div>
 
     <div class="campo" id="campo-confirmaInformacion">
       <label class="opcion" for="confirmaInformacion">
@@ -1735,6 +1812,11 @@ body.modal-abierto { overflow: hidden; }
       <ol class="final-pasos" id="listaQueSigue"></ol>
     </div>
 
+    <div class="final-acciones">
+      <button type="button" class="btn-primario" id="btnDescargarPdf">Descargar PDF</button>
+      <button type="button" class="btn-secundario" id="btnImprimir">Imprimir registro</button>
+    </div>
+
   </section>
 
     <p class="nota-pie" id="notaPie">Complete el formulario en una sola sesión: la
@@ -1766,8 +1848,247 @@ body.modal-abierto { overflow: hidden; }
   <p id="textoCarga">Guardando su información...</p>
 </div>
 
+<section id="constanciaImpresion" aria-hidden="true"></section>
+
 <datalist id="listaCiudades"></datalist>
 <datalist id="listaInstituciones"></datalist>
+
+<script>
+/* PDF de la constancia, generado en el navegador sin enviar datos a otro servicio. */
+function textoPdf(valor) {
+  return String(valor === undefined || valor === null ? '' : valor)
+    .replace(/[\u2010-\u2015]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/\s+/g, ' ')
+    .split('').map(function (c) {
+      var codigo = c.charCodeAt(0);
+      return codigo >= 32 && codigo <= 255 ? c : '?';
+    }).join('').trim();
+}
+
+function escaparPdf(valor) {
+  return textoPdf(valor).replace(/([\\()])/g, '\\$1');
+}
+
+function anchoPdf(texto, tamano) {
+  var unidades = 0;
+  for (var i = 0; i < texto.length; i++) {
+    var c = texto.charAt(i);
+    unidades += c === ' ' ? 0.3 : /[MW]/.test(c) ? 0.9 :
+      /[mw]/.test(c) ? 0.8 : /[ilIjtf.,:;!'|]/.test(c) ? 0.3 :
+      /[A-ZÁÉÍÓÚÑ]/.test(c) ? 0.66 : 0.55;
+  }
+  return unidades * tamano;
+}
+
+function partirPdf(valor, tamano, anchoMaximo) {
+  var palabras = textoPdf(valor).split(' ');
+  var lineas = [];
+  var linea = '';
+  palabras.forEach(function (palabra) {
+    if (!palabra) return;
+    var candidata = linea ? linea + ' ' + palabra : palabra;
+    if (anchoPdf(candidata, tamano) <= anchoMaximo) {
+      linea = candidata;
+      return;
+    }
+    if (linea) lineas.push(linea);
+    linea = '';
+    while (palabra && anchoPdf(palabra, tamano) > anchoMaximo) {
+      var corte = palabra.length - 1;
+      while (corte > 1 && anchoPdf(palabra.slice(0, corte), tamano) > anchoMaximo) corte--;
+      lineas.push(palabra.slice(0, corte));
+      palabra = palabra.slice(corte);
+    }
+    linea = palabra;
+  });
+  if (linea) lineas.push(linea);
+  return lineas.length ? lineas : ['-'];
+}
+
+/** Devuelve los bytes de un PDF A4 con todas las secciones de la constancia. */
+function generarPdfRegistro(datos) {
+  var paginas = [];
+  var actual = '';
+  var y = 0;
+  var margen = 48;
+  var ancho = 499;
+
+  function linea(texto, fuente, tamano, x, posicionY) {
+    actual += 'BT /' + fuente + ' ' + tamano + ' Tf ' + x + ' ' + posicionY +
+      ' Td (' + escaparPdf(texto) + ') Tj ET\n';
+  }
+  function nuevaPagina() {
+    if (actual) paginas.push(actual);
+    actual = '';
+    y = 790;
+    linea('Corporación Universitaria del Meta - UNIMETA', 'F2', 9, margen, 811);
+    actual += '0.75 w ' + margen + ' 803 m 547 803 l S\n';
+  }
+  function espacio(necesario) {
+    if (y - necesario < 54) nuevaPagina();
+  }
+  function titulo(texto) {
+    var lineas = partirPdf(texto, 15, ancho);
+    espacio(lineas.length * 21 + 8);
+    lineas.forEach(function (l) { linea(l, 'F2', 15, margen, y); y -= 21; });
+    y -= 8;
+  }
+  function seccion(texto) {
+    espacio(40);
+    y -= 5;
+    linea(texto, 'F2', 12, margen, y);
+    y -= 6;
+    actual += '0.5 w ' + margen + ' ' + y + ' m 547 ' + y + ' l S\n';
+    y -= 17;
+  }
+  function campo(etiqueta, valor) {
+    var valores = partirPdf(valor, 10, ancho - 8);
+    var etiquetas = partirPdf(etiqueta, 8, ancho);
+    espacio(etiquetas.length * 10 + valores.length * 13 + 10);
+    etiquetas.forEach(function (l) { linea(l, 'F2', 8, margen, y); y -= 10; });
+    valores.forEach(function (l) { linea(l, 'F1', 10, margen + 8, y); y -= 13; });
+    y -= 9;
+  }
+
+  nuevaPagina();
+  titulo('Actualización de Datos del Personal');
+  campo('Número de radicado', datos.radicado);
+  campo('Fecha y hora de envío', datos.fecha);
+  campo('Correo registrado', datos.correo);
+  (datos.secciones || []).forEach(function (s) {
+    seccion(s.titulo);
+    (s.filas || []).forEach(function (f) { campo(f[0], f[1]); });
+  });
+  paginas.push(actual);
+
+  var objetos = [null,
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'];
+  var hijos = [];
+  paginas.forEach(function (contenido, i) {
+    var idPagina = 5 + 2 * i;
+    var idContenido = idPagina + 1;
+    hijos.push(idPagina + ' 0 R');
+    contenido += 'BT /F1 8 Tf 48 28 Td (Página ' + (i + 1) + ' de ' +
+      paginas.length + ') Tj ET\n';
+    objetos[idPagina] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] ' +
+      '/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' +
+      idContenido + ' 0 R >>';
+    objetos[idContenido] = '<< /Length ' + contenido.length +
+      ' >>\nstream\n' + contenido + 'endstream';
+  });
+  objetos[2] = '<< /Type /Pages /Kids [' + hijos.join(' ') +
+    '] /Count ' + paginas.length + ' >>';
+
+  var pdf = '%PDF-1.4\n%âãÏÓ\n';
+  var posiciones = [0];
+  for (var n = 1; n < objetos.length; n++) {
+    posiciones[n] = pdf.length;
+    pdf += n + ' 0 obj\n' + objetos[n] + '\nendobj\n';
+  }
+  var inicioIndice = pdf.length;
+  pdf += 'xref\n0 ' + objetos.length + '\n0000000000 65535 f \n';
+  for (var j = 1; j < posiciones.length; j++) {
+    pdf += ('0000000000' + posiciones[j]).slice(-10) + ' 00000 n \n';
+  }
+  pdf += 'trailer\n<< /Size ' + objetos.length +
+    ' /Root 1 0 R >>\nstartxref\n' + inicioIndice + '\n%%EOF';
+  var bytes = new Uint8Array(pdf.length);
+  for (var k = 0; k < pdf.length; k++) bytes[k] = pdf.charCodeAt(k);
+  return bytes;
+}
+</script>
+
+<script>
+/* El navegador obtiene solo la sitekey pública; la prueba la valida Apps Script. */
+var configuracionAcceso = null;
+var cargaTurnstile = null;
+var widgetTurnstile = null;
+
+function cargarTurnstile() {
+  if (window.turnstile) return Promise.resolve(window.turnstile);
+  if (cargaTurnstile) return cargaTurnstile;
+  cargaTurnstile = new Promise(function (resolve, reject) {
+    var script = document.createElement('script');
+    var terminado = false;
+    function completar(error) {
+      if (terminado) return;
+      terminado = true;
+      clearTimeout(reloj);
+      if (error) {
+        script.remove();
+        cargaTurnstile = null;
+        reject(new Error('No se pudo cargar la verificación de seguridad. Revise su conexión e intente de nuevo.'));
+      } else resolve(window.turnstile);
+    }
+    var reloj = setTimeout(function () { completar(true); }, 20000);
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.onload = function () { completar(!window.turnstile); };
+    script.onerror = function () { completar(true); };
+    document.head.appendChild(script);
+  });
+  return cargaTurnstile;
+}
+
+function verificarVisitante(accion, contenedor) {
+  if (!configuracionAcceso || !configuracionAcceso.sitekey) {
+    return Promise.reject(new Error('La verificación de acceso no está configurada. Informe al área de TIC.'));
+  }
+  return cargarTurnstile().then(function (turnstile) {
+    return new Promise(function (resolve, reject) {
+      if (widgetTurnstile !== null) turnstile.remove(widgetTurnstile);
+      widgetTurnstile = null;
+      var terminado = false;
+      function completar(token, mensaje) {
+        if (terminado) return;
+        terminado = true;
+        clearTimeout(reloj);
+        if (widgetTurnstile !== null) turnstile.remove(widgetTurnstile);
+        widgetTurnstile = null;
+        contenedor.textContent = '';
+        if (token) resolve(token); else reject(new Error(mensaje));
+      }
+      var reloj = setTimeout(function () {
+        completar('', 'La verificación tardó demasiado. Intente de nuevo; sus datos siguen en pantalla.');
+      }, 120000);
+      try {
+        widgetTurnstile = turnstile.render(contenedor, {
+          sitekey: configuracionAcceso.sitekey,
+          action: accion,
+          language: 'es',
+          size: window.innerWidth < 400 ? 'compact' : 'flexible',
+          appearance: 'always',
+          'response-field': false,
+          retry: 'never',
+          'refresh-expired': 'never',
+          'refresh-timeout': 'never',
+          callback: function (token) { completar(token); },
+          'error-callback': function () {
+            completar('', 'No fue posible verificar el acceso. Revise su conexión e intente de nuevo.');
+            return true;
+          },
+          'expired-callback': function () {
+            completar('', 'La verificación venció. Intente de nuevo.');
+          },
+          'timeout-callback': function () {
+            completar('', 'La verificación venció. Intente de nuevo.');
+          },
+          'unsupported-callback': function () {
+            completar('', 'Use una versión actual de Chrome, Edge, Firefox o Safari para verificar el acceso.');
+          }
+        });
+      } catch (e) {
+        completar('', 'No fue posible iniciar la verificación de seguridad. Intente de nuevo.');
+      }
+    });
+  });
+}
+</script>
 
 <script>window.URL_SERVIDOR = "https://script.google.com/macros/s/AKfycbw7h5je56SzVEgpRmNRcxuDon-mD9MjVuImIXQnKWSIjCkxAhOF1rt1FewUT9lgqIWbtg/exec";</script>
 <script>
@@ -1849,10 +2170,12 @@ function anunciar(texto) {
 function mejorarAccesibilidad() {
   var obligatorios = [
     'tipoVinculacion', 'cargo', 'tipoDocumento', 'numDocumento', 'nombres',
-    'apellidos', 'fechaNacimiento', 'celular', 'correoPersonal', 'idEscuela',
+    'apellidos', 'fechaNacimiento', 'rh', 'genero', 'numeroLibreta', 'expedidaEn',
+    'claseLibreta', 'distritoMilitar', 'celular', 'correoPersonal', 'idEscuela',
     'unidadDirectiva', 'idDependencia', 'otraUnidadDirectiva', 'ciudadResidencia',
     'estadoCivil', 'nombreConyuge', 'ocupacionConyuge', 'otraOcupacionConyuge',
-    'fondoCesantias', 'otroFondoCesantias', 'arl', 'otraArl',
+    'nivelFormacionConyuge', 'tituloConyuge', 'institucionConyuge',
+    'eps', 'fondoPensiones', 'fondoCesantias', 'otroFondoCesantias', 'arl', 'otraArl',
     'frecuenciaDeporte', 'nivelFormacionMaximo'
   ];
   obligatorios.forEach(function (id) {
@@ -1873,7 +2196,7 @@ var SIN_CONEXION = 'No fue posible comunicarse con el servidor. ' +
   'Verifique su conexión e intente de nuevo.';
 
 /**
- * Unica via hacia el servidor. accion es una de las tres de ACCIONES_API
+ * Unica via hacia el servidor. accion pertenece a ACCIONES_API
  * (Api.gs) y argumento, si lo hay, su unico parametro.
  *
  * Publicada en GitHub Pages, la pagina llama a la URL /exec de Apps Script
@@ -1914,15 +2237,35 @@ function llamarServidor(accion, argumento, exito, fallo) {
    ------------------------------------------------------------ */
 
 document.addEventListener('DOMContentLoaded', function () {
-  $('capaCarga').classList.add('visible');
-  $('textoCarga').textContent = 'Cargando el formulario...';
-
-  llamarServidor('obtenerDatosIniciales', undefined, iniciar, function (err) {
-    $('capaCarga').classList.remove('visible');
-    mostrarErrorGeneral(err && err.message ? err.message :
-      'No fue posible cargar el formulario. Actualice la página.');
-  });
+  $('btnReintentarAcceso').addEventListener('click', arrancarFormulario);
+  arrancarFormulario();
 });
+
+function solicitarServidor(accion, argumento) {
+  return new Promise(function (resolve, reject) {
+    llamarServidor(accion, argumento, resolve, reject);
+  });
+}
+
+function arrancarFormulario() {
+  $('btnReintentarAcceso').hidden = true;
+  $('estadoAcceso').textContent = 'Verificando acceso al formulario…';
+  solicitarServidor('obtenerConfiguracionAcceso').then(function (datos) {
+    configuracionAcceso = datos;
+    return verificarVisitante('entrada', $('turnstileEntrada'));
+  }).then(function (token) {
+    $('estadoAcceso').textContent = 'Cargando el formulario…';
+    return solicitarServidor('obtenerDatosIniciales', { turnstileToken: token });
+  }).then(function (datos) {
+    iniciar(datos);
+    $('verificacionAcceso').hidden = true;
+    $('contenido').hidden = false;
+    $('zonaProgreso').hidden = false;
+  }).catch(function (err) {
+    $('estadoAcceso').textContent = (err && (err.message || err.mensaje)) || SIN_CONEXION;
+    $('btnReintentarAcceso').hidden = false;
+  });
+}
 
 function iniciar(datos) {
   CONFIG = datos;
@@ -2390,6 +2733,8 @@ function conectarEventos() {
   $('btnAgregarFormacion').addEventListener('click', function () { agregarFormacion(); });
 
   $('btnEnviar').addEventListener('click', enviar);
+  $('btnDescargarPdf').addEventListener('click', descargarPdfRegistro);
+  $('btnImprimir').addEventListener('click', imprimirRegistro);
   $('btnCancelar').addEventListener('click', cancelar);
 
   // Al salir del campo, el documento se normaliza solo.
@@ -2407,6 +2752,11 @@ function conectarEventos() {
   $('unidadDirectiva').addEventListener('change', alCambiarUnidad);
   $('ocupacionConyuge').addEventListener('change', function () {
     mostrar($('cond-otraOcupacion'), valorDe('ocupacionConyuge') === 'Otra');
+  });
+  $('genero').addEventListener('change', function () {
+    mostrar($('cond-libreta'), valorDe('genero') === 'Masculino');
+    mostrar($('cond-datosLibreta'), valorDe('genero') === 'Masculino' &&
+      marcadoUnico('tieneLibretaMilitar') === 'Si');
   });
 
   $('fondoCesantias').addEventListener('change', function () {
@@ -2470,6 +2820,9 @@ function alCambiar(nombre) {
     if (si && hijos.length === 0) agregarHijo();
   } else if (nombre === 'practicaDeporte') {
     mostrar($('cond-deporte'), marcadoUnico('practicaDeporte') === 'Si');
+  } else if (nombre === 'tieneLibretaMilitar') {
+    mostrar($('cond-datosLibreta'), valorDe('genero') === 'Masculino' &&
+      marcadoUnico('tieneLibretaMilitar') === 'Si');
   } else if (nombre === 'interesActividades') {
     var v = marcadoUnico('interesActividades');
     mostrar($('cond-actividades'), v === 'Si' || v === 'Tal vez');
@@ -2499,7 +2852,7 @@ function alCambiarUnidad() {
   sel.disabled = true;
   sel.appendChild(new Option('Cargando dependencias...', ''));
 
-  llamarServidor('obtenerDependencias', unidad, pintarDependencias, function () {
+  llamarServidor('obtenerDependencias', { unidadDirectiva: unidad, pase: CONFIG.pase }, pintarDependencias, function () {
     sel.innerHTML = '';
     sel.appendChild(new Option('No fue posible cargar las dependencias', ''));
   });
@@ -2670,7 +3023,7 @@ function agregarHijo() {
     mostrarAviso('Límite alcanzado', 'No es posible registrar más de ' + CONFIG.limites.maxHijos + ' hijos.');
     return;
   }
-  hijos.push({ uid: ++secuencia, nombre: '', edad: '', depende: 'Si' });
+  hijos.push({ uid: ++secuencia, nombre: '', fechaNacimiento: '', depende: 'Si', vinculoUnimeta: 'No' });
   pintarHijos();
 }
 
@@ -2699,13 +3052,15 @@ function pintarHijos() {
     item.appendChild(cab);
 
     var rej = crear('div', 'rejilla');
-    rej.appendChild(campoTexto('Nombre del hijo(a)', 'hijo-nombre-' + h.uid, h.nombre, true,
-      function (v) { h.nombre = v; }, 'text', vNombre('el nombre del hijo(a)')));
-    rej.appendChild(campoNumero('Edad (años cumplidos)', 'hijo-edad-' + h.uid,
-      h.edad, 0, CONFIG.limites.edadMaximaHijo,
-      function (v) { h.edad = v; }, vEdadHijo, true));
+    rej.appendChild(campoTexto('Nombres y apellidos del hijo(a)', 'hijo-nombre-' + h.uid, h.nombre, true,
+      function (v) { h.nombre = v; }, 'text', vNombreCompletoHijo));
+    rej.appendChild(campoFecha('Fecha de nacimiento', 'hijo-fecha-' + h.uid,
+      h.fechaNacimiento, true, function (v) { h.fechaNacimiento = v; }, vFechaHijo));
     rej.appendChild(campoOpciones('¿Depende económicamente de usted?', 'hijo-dep-' + h.uid,
       ['Si', 'No'], h.depende, function (v) { h.depende = v; }));
+    rej.appendChild(campoOpciones('Relación académica con UNIMETA', 'hijo-unimeta-' + h.uid,
+      ['No', 'Estudiante', 'Egresado', 'Estudiante y egresado'], h.vinculoUnimeta,
+      function (v) { h.vinculoUnimeta = v; }));
     item.appendChild(rej);
 
     cont.appendChild(item);
@@ -2773,7 +3128,7 @@ function agregarFormacion() {
   }
   formacion.push({
     uid: ++secuencia, nivel: '', tipoInstitucion: '', institucion: '',
-    titulo: '', estado: '', anio: '', ciudad: '', pais: 'Colombia'
+    titulo: '', estado: '', fechaGrado: '', ciudad: '', pais: 'Colombia'
   });
   pintarFormacion();
 }
@@ -2828,7 +3183,7 @@ function pintarFormacion() {
     campoInst.classList.add('ancho-total');
     rej.appendChild(campoInst);
 
-    var campoTit = campoTexto('Título otorgado', 'for-tit-' + f.uid, f.titulo, true,
+    var campoTit = campoTexto('Título obtenido o estudio en curso', 'for-tit-' + f.uid, f.titulo, true,
       function (v) { f.titulo = v; });
     campoTit.classList.add('ancho-total');
     rej.appendChild(campoTit);
@@ -2839,10 +3194,11 @@ function pintarFormacion() {
         pintarFormacion();
       }));
 
-    // El anio solo tiene sentido si ya se graduo, y aun asi es opcional.
+    // La fecha de grado es obligatoria únicamente para estudios graduados.
     if (f.estado === 'Graduado') {
-      rej.appendChild(campoNumero('Año de grado (opcional)', 'for-anio-' + f.uid,
-        f.anio, 1930, CONFIG.anioActual, function (v) { f.anio = v; }, vAnioGrado));
+      rej.appendChild(campoFecha('Fecha de grado', 'for-fecha-' + f.uid,
+        f.fechaGrado, true, function (v) { f.fechaGrado = v; }, vFechaGrado,
+        '1930-01-01'));
     }
 
     // El pais va primero porque decide como se pide la ciudad: al cambiarlo
@@ -2934,15 +3290,17 @@ function campoNumero(etiqueta, id, valor, min, max, alEscribir, validador, oblig
   return div;
 }
 
-function campoFecha(etiqueta, id, valor, obligatorio, alEscribir, validador) {
+function campoFecha(etiqueta, id, valor, obligatorio, alEscribir, validador, minimo) {
   var div = envoltura(etiqueta, id, obligatorio);
   var inp = document.createElement('input');
   inp.type = 'date';
   inp.id = id;
   if (obligatorio) inp.setAttribute('aria-required', 'true');
   inp.value = valor || '';
-  inp.max = new Date().toISOString().split('T')[0];
-  inp.min = String(new Date().getFullYear() - CONFIG.limites.edadMaximaHijo) + '-01-01';
+  var hoy = new Date();
+  inp.max = hoy.getFullYear() + '-' + ('0' + (hoy.getMonth() + 1)).slice(-2) +
+    '-' + ('0' + hoy.getDate()).slice(-2);
+  inp.min = minimo || String(hoy.getFullYear() - CONFIG.limites.edadMaximaHijo - 1) + '-01-01';
   inp.addEventListener('input', function () {
     alEscribir(inp.value);
   });
@@ -3190,29 +3548,47 @@ function vFechaNacimiento(v) {
   return { ok: true };
 }
 
-function vEdadHijo(v) {
-  var t = String(v === null || v === undefined ? '' : v).trim();
-  if (!t) return { ok: false, mensaje: 'Indique la edad.' };
-  if (!/^\d{1,3}$/.test(t)) {
-    return { ok: false, mensaje: 'Digite la edad en años, en número entero.' };
+function vFechaCalendario(v, etiqueta) {
+  if (!v) return { ok: false, mensaje: 'Indique ' + etiqueta + '.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v))) {
+    return { ok: false, mensaje: 'La fecha no es válida.' };
   }
-  var n = parseInt(t, 10);
-  if (n < 0 || n > CONFIG.limites.edadMaximaHijo) {
-    return { ok: false, mensaje: 'Digite una edad entre 0 y ' +
-      CONFIG.limites.edadMaximaHijo + ' años.' };
+  var p = v.split('-');
+  var f = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  if (f.getFullYear() !== Number(p[0]) || f.getMonth() !== Number(p[1]) - 1 ||
+      f.getDate() !== Number(p[2])) {
+    return { ok: false, mensaje: 'La fecha no existe en el calendario.' };
+  }
+  var hoy = new Date();
+  if (f > new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) {
+    return { ok: false, mensaje: 'La fecha no puede ser posterior a hoy.' };
   }
   return { ok: true };
 }
 
-function vAnioGrado(v) {
-  var t = String(v || '').trim();
-  if (!t) return { ok: true };             // opcional
-  if (!/^\d{4}$/.test(t)) return { ok: false, mensaje: 'El año debe tener 4 dígitos.' };
-  var n = parseInt(t, 10);
-  if (n > CONFIG.anioActual) {
-    return { ok: false, mensaje: 'El año no puede ser posterior a ' + CONFIG.anioActual + '.' };
+function vFechaHijo(v) {
+  var r = vFechaCalendario(v, 'la fecha de nacimiento del hijo(a)');
+  if (!r.ok) return r;
+  if (calcularEdad(v) > CONFIG.limites.edadMaximaHijo) {
+    return { ok: false, mensaje: 'Revise la fecha: supera la edad máxima admitida.' };
   }
-  if (n < 1930) return { ok: false, mensaje: 'Revise el año de grado.' };
+  return { ok: true };
+}
+
+function vNombreCompletoHijo(v) {
+  var r = vNombre('el nombre del hijo(a)')(v);
+  if (!r.ok) return r;
+  return String(v).trim().split(/\s+/).length >= 2
+    ? { ok: true }
+    : { ok: false, mensaje: 'Digite nombres y apellidos del hijo(a).' };
+}
+
+function vFechaGrado(v) {
+  var r = vFechaCalendario(v, 'la fecha de grado');
+  if (!r.ok) return r;
+  if (Number(v.slice(0, 4)) < 1930) {
+    return { ok: false, mensaje: 'La fecha de grado debe ser de 1930 en adelante.' };
+  }
   return { ok: true };
 }
 
@@ -3280,9 +3656,20 @@ function conectarValidaciones() {
   conectarValidacion($('correo'), vCorreo);
   conectarValidacion($('correoPersonal'), vCorreoContacto);
   conectarValidacion($('fechaNacimiento'), vFechaNacimiento);
+  conectarValidacion($('rh'), vSeleccion('su RH'));
+  conectarValidacion($('genero'), vSeleccion('su género'));
+  conectarValidacion($('numeroLibreta'), vTexto('el número de libreta'));
+  conectarValidacion($('expedidaEn'), vTexto('el lugar de expedición'));
+  conectarValidacion($('claseLibreta'), vSeleccion('la clase de libreta'));
+  conectarValidacion($('distritoMilitar'), vTexto('el distrito militar'));
   conectarValidacion($('cargo'), vTexto('su cargo'));
   conectarValidacion($('ciudadResidencia'), vCiudad(true));
   conectarValidacion($('nombreConyuge'), vNombre('el nombre del cónyuge'));
+  conectarValidacion($('nivelFormacionConyuge'), vSeleccion('la formación del cónyuge'));
+  conectarValidacion($('tituloConyuge'), vTexto('el título o estudio del cónyuge'));
+  conectarValidacion($('institucionConyuge'), vTexto('la institución del cónyuge'));
+  conectarValidacion($('eps'), vTexto('su EPS'));
+  conectarValidacion($('fondoPensiones'), vTexto('su fondo de pensiones'));
   conectarValidacion($('otraUnidadDirectiva'), vTexto('su unidad o dependencia'));
   conectarValidacion($('otroFondoCesantias'), vTexto('el fondo de cesantías'));
   conectarValidacion($('otraArl'), vTexto('la ARL'));
@@ -3404,6 +3791,16 @@ function validarPaso(n) {
 
     ok = sinNumeros('nombres', 'Digite sus nombres.') && ok;
     ok = sinNumeros('apellidos', 'Digite sus apellidos.') && ok;
+    ok = obligatorio('rh') && ok;
+    ok = obligatorio('genero') && ok;
+    if (valorDe('genero') === 'Masculino') {
+      if (!marcadoUnico('tieneLibretaMilitar')) { marcarError('tieneLibretaMilitar'); ok = false; }
+      else if (marcadoUnico('tieneLibretaMilitar') === 'Si') {
+        ['numeroLibreta', 'expedidaEn', 'claseLibreta', 'distritoMilitar'].forEach(function (id) {
+          ok = obligatorio(id) && ok;
+        });
+      }
+    }
 
     var fn = valorDe('fechaNacimiento');
     if (!fn) {
@@ -3466,6 +3863,9 @@ function validarPaso(n) {
     else if (marcadoUnico('tieneConyuge') === 'Si') {
       ok = sinNumeros('nombreConyuge', 'Digite el nombre del cónyuge.') && ok;
       ok = obligatorio('ocupacionConyuge') && ok;
+      ok = obligatorio('nivelFormacionConyuge') && ok;
+      ok = obligatorio('tituloConyuge') && ok;
+      ok = obligatorio('institucionConyuge') && ok;
       if (valorDe('ocupacionConyuge') === 'Otra') {
         ok = obligatorio('otraOcupacionConyuge', 'Especifique la ocupación.') && ok;
       }
@@ -3478,10 +3878,11 @@ function validarPaso(n) {
         ok = false;
       } else {
         hijos.forEach(function (h) {
-          if (!String(h.nombre || '').trim()) { marcarError('hijo-nombre-' + h.uid); ok = false; }
-          var rEdad = vEdadHijo(h.edad);
-          if (!rEdad.ok) {
-            marcarError('hijo-edad-' + h.uid, rEdad.mensaje);
+          var rNombre = vNombreCompletoHijo(h.nombre);
+          if (!rNombre.ok) { marcarError('hijo-nombre-' + h.uid, rNombre.mensaje); ok = false; }
+          var rFechaHijo = vFechaHijo(h.fechaNacimiento);
+          if (!rFechaHijo.ok) {
+            marcarError('hijo-fecha-' + h.uid, rFechaHijo.mensaje);
             ok = false;
           }
         });
@@ -3515,6 +3916,8 @@ function validarPaso(n) {
   }
 
   if (n === 7) {
+    ok = obligatorio('eps') && ok;
+    ok = obligatorio('fondoPensiones') && ok;
     ok = obligatorio('fondoCesantias') && ok;
     if (valorDe('fondoCesantias') === 'Otro') {
       ok = obligatorio('otroFondoCesantias', 'Especifique el fondo.') && ok;
@@ -3526,6 +3929,7 @@ function validarPaso(n) {
   }
 
   if (n === 8) {
+    if (!marcadoUnico('practicaActividadCultural')) { marcarError('practicaActividadCultural'); ok = false; }
     if (!marcadoUnico('practicaDeporte')) { marcarError('practicaDeporte'); ok = false; }
     else if (marcadoUnico('practicaDeporte') === 'Si') {
       if (listaDeportes().length === 0) {
@@ -3552,10 +3956,10 @@ function validarPaso(n) {
       if (!String(f.institucion || '').trim()) { marcarError('for-ins-' + f.uid); ok = false; }
       if (!String(f.titulo || '').trim()) { marcarError('for-tit-' + f.uid); ok = false; }
       if (!f.estado) { marcarError('for-est-' + f.uid); ok = false; }
-      if (f.estado === 'Graduado' && String(f.anio || '').trim()) {
-        var a = parseInt(f.anio, 10);
-        if (isNaN(a) || a < 1930 || a > CONFIG.anioActual) {
-          marcarError('for-anio-' + f.uid, 'Digite un año válido de 4 dígitos.');
+      if (f.estado === 'Graduado') {
+        var rFechaGrado = vFechaGrado(f.fechaGrado);
+        if (!rFechaGrado.ok) {
+          marcarError('for-fecha-' + f.uid, rFechaGrado.mensaje);
           ok = false;
         }
       }
@@ -3616,6 +4020,13 @@ function recolectar() {
     nombres: valorDe('nombres'),
     apellidos: valorDe('apellidos'),
     fechaNacimiento: valorDe('fechaNacimiento'),
+    rh: valorDe('rh'),
+    genero: valorDe('genero'),
+    tieneLibretaMilitar: valorDe('genero') === 'Masculino' ? marcadoUnico('tieneLibretaMilitar') : '',
+    numeroLibreta: valorDe('genero') === 'Masculino' && marcadoUnico('tieneLibretaMilitar') === 'Si' ? valorDe('numeroLibreta') : '',
+    expedidaEn: valorDe('genero') === 'Masculino' && marcadoUnico('tieneLibretaMilitar') === 'Si' ? valorDe('expedidaEn') : '',
+    claseLibreta: valorDe('genero') === 'Masculino' && marcadoUnico('tieneLibretaMilitar') === 'Si' ? valorDe('claseLibreta') : '',
+    distritoMilitar: valorDe('genero') === 'Masculino' && marcadoUnico('tieneLibretaMilitar') === 'Si' ? valorDe('distritoMilitar') : '',
     celular: valorDe('celular'),
     correo: valorDe('correo'),
     correoPersonal: valorDe('correoPersonal'),
@@ -3634,11 +4045,15 @@ function recolectar() {
     nombreConyuge: valorDe('nombreConyuge'),
     ocupacionConyuge: valorDe('ocupacionConyuge'),
     otraOcupacionConyuge: valorDe('otraOcupacionConyuge'),
+    nivelFormacionConyuge: valorDe('nivelFormacionConyuge'),
+    tituloConyuge: valorDe('tituloConyuge'),
+    institucionConyuge: valorDe('institucionConyuge'),
 
     tieneHijos: marcadoUnico('tieneHijos'),
     hijos: marcadoUnico('tieneHijos') === 'Si'
       ? hijos.map(function (h) {
-          return { nombre: h.nombre, edad: h.edad, depende: h.depende };
+          return { nombre: h.nombre, fechaNacimiento: h.fechaNacimiento,
+            depende: h.depende, vinculoUnimeta: h.vinculoUnimeta };
         })
       : [],
 
@@ -3649,6 +4064,8 @@ function recolectar() {
       };
     }),
 
+    eps: valorDe('eps'),
+    fondoPensiones: valorDe('fondoPensiones'),
     fondoCesantias: valorDe('fondoCesantias'),
     otroFondoCesantias: valorDe('otroFondoCesantias'),
     arl: valorDe('arl'),
@@ -3657,6 +4074,7 @@ function recolectar() {
     pasatiempos: marcados('pasatiempos'),
     otroPasatiempo: valorDe('otroPasatiempo'),
     practicaDeporte: marcadoUnico('practicaDeporte'),
+    practicaActividadCultural: marcadoUnico('practicaActividadCultural'),
     deportes: marcadoUnico('practicaDeporte') === 'Si' ? listaDeportes() : [],
     frecuenciaDeporte: valorDe('frecuenciaDeporte'),
     interesActividades: marcadoUnico('interesActividades'),
@@ -3666,7 +4084,8 @@ function recolectar() {
     formacion: formacion.map(function (f) {
       return {
         nivel: f.nivel, tipoInstitucion: f.tipoInstitucion, institucion: f.institucion,
-        titulo: f.titulo, estado: f.estado, anio: f.anio, ciudad: f.ciudad, pais: f.pais
+        titulo: f.titulo, estado: f.estado, fechaGrado: f.fechaGrado,
+        ciudad: f.ciudad, pais: f.pais
       };
     })
   };
@@ -3694,6 +4113,10 @@ function construirResumen() {
     ['Documento', d.tipoDocumento + ' ' + d.numDocumento],
     ['Nombre completo', d.nombres + ' ' + d.apellidos],
     ['Fecha de nacimiento', formatearFecha(d.fechaNacimiento)],
+    ['RH', d.rh], ['Género', d.genero],
+    ['Tiene libreta militar', d.tieneLibretaMilitar],
+    ['Número de libreta', d.numeroLibreta], ['Expedida en', d.expedidaEn],
+    ['Clase', d.claseLibreta], ['Distrito militar', d.distritoMilitar],
     ['Celular', d.celular]
   ]);
   if (d.correo) {
@@ -3724,12 +4147,17 @@ function construirResumen() {
   if (d.tieneConyuge === 'Si') {
     familia.push(['Nombre del cónyuge', d.nombreConyuge]);
     familia.push(['Ocupacion', d.otraOcupacionConyuge || d.ocupacionConyuge]);
+    familia.push(['Nivel académico del cónyuge', d.nivelFormacionConyuge]);
+    familia.push(['Título o estudio del cónyuge', d.tituloConyuge]);
+    familia.push(['Institución del cónyuge', d.institucionConyuge]);
   }
   familia.push(['Tiene hijos', etiquetaOpcion(d.tieneHijos)]);
   d.hijos.forEach(function (h, i) {
     familia.push(['Hijo(a) ' + (i + 1),
-      h.nombre + ' - ' + h.edad + (String(h.edad) === '1' ? ' año' : ' años') + ' - ' +
-      (h.depende === 'Si' ? 'depende económicamente' : 'no depende económicamente')]);
+      h.nombre + ' - Nacimiento: ' + formatearFecha(h.fechaNacimiento) + ' - ' +
+      calcularEdad(h.fechaNacimiento) + ' años - ' +
+      (h.depende === 'Si' ? 'depende económicamente' : 'no depende económicamente') +
+      ' - UNIMETA: ' + h.vinculoUnimeta]);
   });
   bloque(cont, 'Información familiar', 5, familia);
 
@@ -3737,10 +4165,13 @@ function construirResumen() {
   d.contactos.forEach(function (ce, i) {
     filasContactos.push(['Contacto ' + (i + 1), ce.nombre + ' · ' +
       (ce.parentesco === 'Otro' ? ce.otroParentesco : ce.parentesco) + ' · ' + ce.celular]);
+    if (ce.alterno) filasContactos.push(['Teléfono alternativo', ce.alterno]);
+    if (ce.ciudad) filasContactos.push(['Ciudad del contacto', ce.ciudad]);
   });
   bloque(cont, 'Contactos de emergencia', 6, filasContactos);
 
   bloque(cont, 'Seguridad social', 7, [
+    ['EPS', d.eps], ['Fondo de pensiones', d.fondoPensiones],
     ['Fondo de cesantías', d.otroFondoCesantias || d.fondoCesantias],
     ['ARL', d.otraArl || d.arl]
   ]);
@@ -3748,6 +4179,7 @@ function construirResumen() {
   bloque(cont, 'Pasatiempos y actividad física', 8, [
     ['Pasatiempos', d.pasatiempos.join(', ') + (d.otroPasatiempo ? ', ' + d.otroPasatiempo : '')],
     ['Practica deporte', etiquetaOpcion(d.practicaDeporte)],
+    ['Practica actividad cultural o artística', etiquetaOpcion(d.practicaActividadCultural)],
     ['Deportes', d.deportes.join(', ')],
     ['Frecuencia', d.frecuenciaDeporte],
     ['Interés en actividades', etiquetaOpcion(d.interesActividades)],
@@ -3757,8 +4189,10 @@ function construirResumen() {
   var estudios = [['Nivel más alto alcanzado', d.nivelFormacionMaximo]];
   d.formacion.forEach(function (f, i) {
     estudios.push(['Estudio ' + (i + 1),
-      f.titulo + ' - ' + f.institucion + ' (' + f.estado +
-      (f.anio ? ', ' + f.anio : '') + ')']);
+      f.nivel + ' - ' + f.titulo + ' - ' + f.institucion +
+      ' (' + f.tipoInstitucion + '; ' + f.estado +
+      (f.estado === 'Graduado' ? ', grado: ' + formatearFecha(f.fechaGrado) : '') +
+      '; ' + f.ciudad + ', ' + f.pais + ')']);
   });
   bloque(cont, 'Formación académica', 9, estudios);
 }
@@ -3809,32 +4243,50 @@ function hayDatos() {
    ENVIO
    ------------------------------------------------------------ */
 
-function enviar() {
-  if (enviando) return;
-
-  // Se revalidan todos los pasos: alguien pudo saltar con el boton Corregir.
+function revisarAntesDeEnviar() {
   for (var i = 1; i <= TOTAL_PASOS; i++) {
     if (!validarPaso(i)) {
       irAPaso(i);
       mostrarErrorGeneral('Hay información por corregir en el paso ' + i +
                           ' (' + NOMBRES_PASOS[i] + ').');
-      return;
+      return false;
     }
   }
+  return true;
+}
+
+function enviar() {
+  if (enviando || !revisarAntesDeEnviar()) return;
 
   enviando = true;
   $('btnEnviar').disabled = true;
   $('avisoError').style.display = 'none';
-  $('textoCarga').textContent = 'Guardando su información...';
-  $('capaCarga').classList.add('visible');
-
-  llamarServidor('guardarFormulario', recolectar(), alResponder, function (err) {
-    alResponder({ success: false, mensaje: (err && err.message) || SIN_CONEXION });
+  $('estadoVerificacionEnvio').textContent = 'Verificando el envío…';
+  verificarVisitante('envio', $('turnstileEnvio')).then(function (token) {
+    // La persona pudo corregir un campo mientras se verificaba el acceso.
+    if (!revisarAntesDeEnviar()) {
+      enviando = false;
+      $('btnEnviar').disabled = false;
+      $('estadoVerificacionEnvio').textContent = '';
+      return;
+    }
+    construirResumen();
+    var datos = recolectar();
+    datos.turnstileToken = token;
+    $('estadoVerificacionEnvio').textContent = '';
+    $('textoCarga').textContent = 'Guardando su información...';
+    $('capaCarga').classList.add('visible');
+    llamarServidor('guardarFormulario', datos, alResponder, function (err) {
+      alResponder({ success: false, mensaje: (err && err.message) || SIN_CONEXION });
+    });
+  }).catch(function (err) {
+    alResponder({ success: false, mensaje: err && err.message ? err.message : SIN_CONEXION });
   });
 }
 
 function alResponder(r) {
   $('capaCarga').classList.remove('visible');
+  $('estadoVerificacionEnvio').textContent = '';
 
   if (!r || !r.success) {
     enviando = false;
@@ -3886,6 +4338,55 @@ function pintarPantallaFinal(r) {
   });
 
   $('notaPie').textContent = t.finalNota;
+  prepararConstancia();
+}
+
+function prepararConstancia() {
+  var pagina = $('constanciaImpresion');
+  pagina.innerHTML = '';
+  pagina.appendChild(crear('h1', null, 'Actualización de Datos del Personal – UNIMETA'));
+  pagina.appendChild(crear('p', null, 'Radicado: ' + $('numeroRadicado').textContent));
+  pagina.appendChild(crear('p', null, 'Fecha y hora de envío: ' + $('fechaRecepcion').textContent));
+  pagina.appendChild(crear('p', null, 'Correo registrado: ' + $('correoRegistrado').textContent));
+  var resumen = $('resumen').cloneNode(true);
+  resumen.removeAttribute('id');
+  $$('.btn-corregir', resumen).forEach(function (b) { b.remove(); });
+  pagina.appendChild(resumen);
+}
+
+function imprimirRegistro() {
+  prepararConstancia();
+  window.print();
+}
+
+function datosConstanciaPdf() {
+  return {
+    radicado: $('numeroRadicado').textContent,
+    fecha: $('fechaRecepcion').textContent,
+    correo: $('correoRegistrado').textContent,
+    secciones: $$('.resumen-bloque', $('resumen')).map(function (bloque) {
+      return {
+        titulo: bloque.querySelector('.resumen-encabezado span').textContent,
+        filas: $$('.resumen-fila', bloque).map(function (fila) {
+          return [fila.querySelector('.resumen-etiqueta').textContent,
+            fila.querySelector('.resumen-valor').textContent];
+        })
+      };
+    })
+  };
+}
+
+function descargarPdfRegistro() {
+  var datos = datosConstanciaPdf();
+  var archivo = new Blob([generarPdfRegistro(datos)], { type: 'application/pdf' });
+  var direccion = URL.createObjectURL(archivo);
+  var enlace = document.createElement('a');
+  enlace.href = direccion;
+  enlace.download = 'registro-unimeta-' + datos.radicado.replace(/[^A-Za-z0-9-]/g, '') + '.pdf';
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(function () { URL.revokeObjectURL(direccion); }, 60000);
 }
 
 /** La marca {correo} del texto se convierte en un enlace de correo. */
