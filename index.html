@@ -6,7 +6,7 @@
   <!-- Un formulario con datos del personal no debe aparecer en buscadores. -->
   <meta name="robots" content="noindex, nofollow">
   <!-- Recursos autorizados del formulario y del control de acceso Turnstile. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://challenges.cloudflare.com https://accounts.google.com/gsi/client; frame-src https://challenges.cloudflare.com https://accounts.google.com/gsi/; style-src 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com https://accounts.google.com/gsi/; base-uri 'none'; form-action 'none'">
   <title>Actualización de Datos del Personal - UNIMETA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1172,6 +1172,7 @@ body.modal-abierto { overflow: hidden; }
       <h1>Actualización de Datos del Personal</h1>
       <p>Corporación Universitaria del Meta - UNIMETA</p>
     </div>
+    <a href="#talento-humano" class="enlace-th" id="enlaceTH">Acceso Talento Humano</a>
   </div>
 </header>
 <div class="franja" aria-hidden="true"></div>
@@ -2090,6 +2091,651 @@ function verificarVisitante(accion, contenedor) {
 }
 </script>
 
+<!--
+  PanelTH.html
+  Panel de Talento Humano, en la misma pagina del formulario.
+
+  Se abre con el enlace "Acceso Talento Humano" del encabezado o con la
+  direccion terminada en #talento-humano. El boton de Google se carga solo en
+  ese momento: quien diligencia el formulario no descarga nada de Google.
+
+  Todo identificador empieza por "th" para no chocar con los del formulario.
+  Los datos se insertan siempre con textContent, nunca con innerHTML.
+-->
+<style>
+.enlace-th {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-borde-fuerte);
+  padding: 2px 0;
+}
+.enlace-th:hover { color: var(--color-primario-oscuro); border-bottom-color: var(--color-primario); }
+
+.th { max-width: var(--ancho-max); margin: 0 auto; padding: 28px 24px 56px; }
+/* El foco se mueve aqui por programa para lectores de pantalla; no necesita recuadro. */
+#thTitulo:focus, .th-ficha:focus { outline: none; }
+.th h2, .th h3, .th p { margin: 0; }
+.th-barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.th-barra h2 { font-size: 22px; font-weight: 800; flex: 1 1 260px; }
+.th-sesion { font-size: 13px; color: var(--color-texto-suave); }
+.th-sesion strong { color: var(--color-texto); word-break: break-all; }
+.th-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.th button { padding: 10px 16px; }
+
+.th-ingreso { max-width: 560px; margin: 8vh auto 0; text-align: center; }
+.th-ingreso p { color: var(--color-texto-suave); margin-bottom: 18px; }
+.th-boton-google { display: flex; justify-content: center; min-height: 44px; margin-bottom: 14px; }
+.th-aviso { color: var(--color-error); font-weight: 600; margin: 12px 0 0; }
+.th-aviso:empty { display: none; }
+
+.th-estado {
+  background: var(--color-superficie); border: 1px solid var(--color-borde);
+  padding: 28px 20px; text-align: center; color: var(--color-texto-suave);
+}
+.th-estado.error { background: var(--color-error-fondo); border-color: var(--color-primario-borde); color: var(--color-error); }
+
+.th-tarjeta { background: var(--color-superficie); border: 1px solid var(--color-borde); padding: 20px; }
+.th-tarjeta h3 { font-size: 16px; font-weight: 800; margin-bottom: 14px; }
+
+.th-cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.th-cifra { background: var(--color-superficie); border: 1px solid var(--color-borde); border-top: 3px solid var(--color-primario); padding: 16px; }
+.th-cifra p:first-child { font-size: 13px; color: var(--color-texto-suave); }
+.th-cifra p:last-child { font-size: 32px; font-weight: 800; line-height: 1.2; }
+
+.th-graficos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+.th-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.th-barra-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 14px; }
+.th-barra-etiqueta { overflow-wrap: anywhere; }
+.th-barra-cantidad { font-weight: 800; font-variant-numeric: tabular-nums; }
+.th-barra-riel { grid-column: 1 / -1; height: 8px; background: var(--color-azul-suave); }
+.th-barra-valor { height: 100%; background: var(--color-azul); transition: width 400ms ease; }
+.th-vacio { color: var(--color-texto-suave); font-size: 14px; }
+
+.th-filtros { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 14px; }
+.th-campo label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.th-campo input, .th-campo select {
+  width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; min-height: 44px;
+  border: 1px solid var(--color-borde-fuerte); background: var(--color-superficie); color: var(--color-texto); border-radius: 0;
+}
+.th-filtros button { min-height: 44px; }
+.th-ayuda { grid-column: 1 / -1; margin-top: -6px; font-size: 13px; color: var(--color-texto-suave); }
+
+.th-tabla-envoltura { overflow-x: auto; border: 1px solid var(--color-borde); }
+.th table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--color-superficie); }
+.th caption { text-align: left; padding: 8px 12px; font-size: 13px; color: var(--color-texto-suave); }
+.th th, .th td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-borde); }
+.th th { background: var(--color-azul-suave); font-weight: 800; white-space: nowrap; }
+.th tbody tr:hover { background: var(--color-superficie-2); }
+.th td.th-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.th .th-ver {
+  padding: 6px 12px; background: var(--color-superficie);
+  border: 1px solid var(--color-primario-borde); color: var(--color-primario-oscuro);
+}
+.th .th-ver:hover { background: var(--color-primario-suave); }
+.th-pie { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 14px; }
+.th-paginacion { display: flex; gap: 8px; }
+
+.th-fondo-ficha {
+  position: fixed; inset: 0; z-index: 60; background: rgba(30, 32, 36, .55);
+  display: flex; justify-content: flex-end;
+}
+.th-ficha {
+  background: var(--color-superficie); width: min(720px, 100%); height: 100%;
+  overflow-y: auto; padding: 22px; border-left: 4px solid var(--color-primario);
+}
+.th-ficha h2, .th-ficha h3, .th-ficha p { margin: 0; }
+.th-ficha button { padding: 10px 16px; }
+.th-ficha-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.th-ficha-cabecera h2 { font-size: 20px; font-weight: 800; }
+.th-ficha-cabecera p { font-size: 14px; color: var(--color-texto-suave); }
+.th-ficha-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.th-seccion { margin-bottom: 18px; border: 1px solid var(--color-borde); }
+.th-seccion h3 { background: var(--color-azul-suave); font-size: 14px; font-weight: 800; padding: 8px 12px; margin: 0; }
+.th-seccion dl { margin: 0; }
+.th-fila { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--color-borde); font-size: 14px; }
+.th-fila dt { color: var(--color-texto-suave); }
+.th-fila dd { margin: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .th-cifras { grid-template-columns: repeat(2, 1fr); }
+  .th-graficos { grid-template-columns: 1fr; }
+  .th-filtros { grid-template-columns: 1fr 1fr; }
+  .th-filtros .th-campo:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .th { padding: 20px 16px 48px; }
+  .th-filtros { grid-template-columns: 1fr; }
+  .th-fila { grid-template-columns: 1fr; gap: 0; }
+  .th-ficha { padding: 16px; }
+  .enlace-th { margin-left: 0; }
+}
+@media print {
+  #constanciaImpresion .th-seccion { break-inside: avoid; margin-top: 14px; border: 1px solid #999; }
+  #constanciaImpresion .th-seccion h3 { background: #eee; }
+  #constanciaImpresion .th-fila { border-top: 1px solid #ccc; }
+}
+</style>
+
+<section class="th" id="panelTH" hidden aria-labelledby="thTitulo">
+
+  <div class="th-barra">
+    <h2 id="thTitulo" tabindex="-1">Panel de Talento Humano</h2>
+    <p class="th-sesion" id="thSesion" hidden>Sesión: <strong id="thUsuario"></strong> · <span id="thActualizado"></span></p>
+    <div class="th-acciones">
+      <button type="button" class="btn-secundario" id="thSalir" hidden>Cerrar sesión</button>
+      <button type="button" class="btn-secundario" id="thIrFormulario">Ir al formulario</button>
+    </div>
+  </div>
+
+  <!-- Ingreso con Google -->
+  <div class="th-tarjeta th-ingreso" id="thIngreso">
+    <h3>Ingreso con cuenta institucional</h3>
+    <p>Solo las cuentas autorizadas de Talento Humano pueden consultar esta información.</p>
+    <div class="th-boton-google" id="thBotonGoogle"></div>
+    <p id="thEstadoIngreso" role="status">Cargando el ingreso con Google…</p>
+    <p class="th-aviso" id="thAviso" role="alert"></p>
+  </div>
+
+  <div class="th-estado" id="thCarga" role="status" hidden>Cargando registros…</div>
+  <div class="th-estado error" id="thError" role="alert" hidden>
+    <p id="thTextoError"></p>
+    <p style="margin-top:14px;"><button type="button" class="btn-secundario" id="thReintentar">Volver a intentar</button></p>
+  </div>
+
+  <div id="thContenido" hidden>
+    <section aria-label="Resumen general">
+      <div class="th-cifras">
+        <div class="th-cifra"><p>Registros recibidos</p><p id="thTotal">0</p></div>
+        <div class="th-cifra"><p>Administrativos</p><p id="thAdministrativos">0</p></div>
+        <div class="th-cifra"><p>Docentes</p><p id="thDocentes">0</p></div>
+        <div class="th-cifra"><p>Últimos 7 días</p><p id="thSemana">0</p></div>
+      </div>
+      <div class="th-graficos">
+        <div class="th-tarjeta"><h3>Por unidad directiva</h3><ul class="th-barras" id="thPorUnidad"></ul></div>
+        <div class="th-tarjeta"><h3>Por nivel de formación más alto</h3><ul class="th-barras" id="thPorNivel"></ul></div>
+        <div class="th-tarjeta"><h3>Por género</h3><ul class="th-barras" id="thPorGenero"></ul></div>
+        <div class="th-tarjeta"><h3>Registros por semana</h3><ul class="th-barras" id="thPorSemana"></ul></div>
+      </div>
+    </section>
+
+    <section class="th-tarjeta" aria-labelledby="thTituloTabla">
+      <h3 id="thTituloTabla">Personas que han diligenciado el formulario</h3>
+      <div class="th-filtros" role="search">
+        <div class="th-campo">
+          <label for="thBuscar">Buscar por número de documento</label>
+          <input type="search" id="thBuscar" autocomplete="off" aria-describedby="thAyudaBuscar"
+                 placeholder="Documento, nombre o apellido">
+        </div>
+        <div class="th-campo">
+          <label for="thFiltroVinculacion">Vinculación</label>
+          <select id="thFiltroVinculacion"><option value="">Todas</option></select>
+        </div>
+        <div class="th-campo">
+          <label for="thFiltroUnidad">Unidad directiva</label>
+          <select id="thFiltroUnidad"><option value="">Todas</option></select>
+        </div>
+        <button type="button" class="btn-secundario" id="thLimpiar">Limpiar</button>
+        <p class="th-ayuda" id="thAyudaBuscar">Puede escribir el documento con o sin puntos y espacios, o buscar por nombre o apellido.</p>
+      </div>
+
+      <div class="th-tabla-envoltura">
+        <table>
+          <caption id="thContador" aria-live="polite"></caption>
+          <thead>
+            <tr>
+              <th scope="col">Documento</th><th scope="col">Nombre</th><th scope="col">Vinculación</th>
+              <th scope="col">Unidad directiva</th><th scope="col">Dependencia</th><th scope="col">Registro</th>
+              <th scope="col"><span class="solo-lectores">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="thCuerpoTabla"></tbody>
+        </table>
+      </div>
+      <p class="th-estado" id="thTablaVacia" hidden></p>
+      <div class="th-pie">
+        <span id="thInfoPagina"></span>
+        <div class="th-paginacion">
+          <button type="button" class="btn-secundario" id="thAnterior">Anterior</button>
+          <button type="button" class="btn-secundario" id="thSiguiente">Siguiente</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- Ficha de una persona -->
+<div class="th-fondo-ficha" id="thFondoFicha" hidden>
+  <section class="th-ficha" id="thFicha" role="dialog" aria-modal="true" aria-labelledby="thFichaNombre" tabindex="-1">
+    <div class="th-ficha-cabecera">
+      <div>
+        <h2 id="thFichaNombre"></h2>
+        <p id="thFichaRadicado"></p>
+      </div>
+      <button type="button" class="btn-secundario" id="thCerrarFicha">Cerrar</button>
+    </div>
+    <p class="th-estado" id="thFichaEstado" role="status" hidden></p>
+    <div id="thFichaContenido" hidden>
+      <div class="th-ficha-acciones">
+        <button type="button" class="btn-primario" id="thPdf">Descargar PDF</button>
+        <button type="button" class="btn-secundario" id="thImprimir">Imprimir</button>
+      </div>
+      <div id="thSecciones"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ============================================================
+   Panel de Talento Humano
+   Usa solicitarServidor() de JavaScript.html y generarPdfRegistro()
+   de Pdf.html. El ID token de Google vive solo en memoria.
+   ============================================================ */
+var PanelTH = (function () {
+  var POR_PAGINA = 25;
+  var URL_GOOGLE = 'https://accounts.google.com/gsi/client';
+
+  var activo = false;
+  var previo = null;          // que estaba a la vista antes de abrir el panel
+  var idToken = null;
+  var filas = [], filtradas = [], pagina = 1;
+  var fichaActual = null, turnoFicha = 0, botonOrigen = null;
+  var cargaGoogle = null, googleListo = false;
+
+  function el(id) { return document.getElementById(id); }
+  function crear(etiqueta, clase, texto) {
+    var n = document.createElement(etiqueta);
+    if (clase) n.className = clase;
+    if (texto !== undefined && texto !== null) n.textContent = texto;
+    return n;
+  }
+  function pedir(accion, argumento) {
+    return solicitarServidor(accion, argumento).catch(function (e) {
+      throw new Error((e && (e.message || e.mensaje)) || SIN_CONEXION);
+    });
+  }
+  function vista(nombre) {
+    ['thIngreso', 'thCarga', 'thError', 'thContenido'].forEach(function (id) {
+      el(id).hidden = id !== nombre;
+    });
+    var conSesion = nombre === 'thContenido';
+    el('thSesion').hidden = !conSesion;
+    el('thSalir').hidden = !idToken;
+  }
+
+  /* ---------- Abrir y cerrar el panel ---------- */
+
+  function abrir() {
+    if (activo) return;
+    activo = true;
+    previo = {
+      verificacionAcceso: !el('verificacionAcceso').hidden,
+      contenido: !el('contenido').hidden,
+      zonaProgreso: !el('zonaProgreso').hidden
+    };
+    Object.keys(previo).forEach(function (id) { el(id).hidden = true; });
+    el('panelTH').hidden = false;
+    if (location.hash !== '#talento-humano') history.replaceState(null, '', '#talento-humano');
+    if (idToken) cargar(); else prepararIngreso();
+    el('thTitulo').focus();
+  }
+
+  /** Vuelve al formulario sin perder lo que la persona llevaba diligenciado. */
+  function irAlFormulario() {
+    activo = false;
+    el('panelTH').hidden = true;
+    history.replaceState(null, '', location.pathname + location.search);
+    var algoVisible = previo && Object.keys(previo).some(function (id) { return previo[id]; });
+    if (algoVisible) {
+      Object.keys(previo).forEach(function (id) { el(id).hidden = !previo[id]; });
+      if (!CONFIG && !arranqueEnCurso) arrancarFormulario();
+    } else {
+      el('verificacionAcceso').hidden = false;
+      arrancarFormulario();
+    }
+  }
+
+  /** Si el formulario termina de cargar con el panel abierto, se queda oculto. */
+  function trasArranque() {
+    if (!activo) return;
+    previo = { verificacionAcceso: false, contenido: true, zonaProgreso: true };
+    Object.keys(previo).forEach(function (id) { el(id).hidden = true; });
+  }
+
+  /* ---------- Ingreso con Google ---------- */
+
+  function cargarGoogle() {
+    if (cargaGoogle) return cargaGoogle;
+    if (window.google && google.accounts && google.accounts.id) return (cargaGoogle = Promise.resolve());
+    cargaGoogle = new Promise(function (resolver, rechazar) {
+      var s = document.createElement('script');
+      s.src = URL_GOOGLE;
+      s.async = true;
+      s.onload = function () { window.google && google.accounts ? resolver() : rechazar(); };
+      s.onerror = function () { rechazar(); };
+      document.head.appendChild(s);
+    }).catch(function () {
+      cargaGoogle = null;
+      throw new Error('No fue posible cargar el ingreso con Google. Revise su conexión e intente de nuevo.');
+    });
+    return cargaGoogle;
+  }
+
+  function prepararIngreso(aviso) {
+    vista('thIngreso');
+    el('thAviso').textContent = aviso || '';
+    if (googleListo) {
+      el('thEstadoIngreso').textContent = 'Use el botón para ingresar.';
+      return;
+    }
+    el('thEstadoIngreso').textContent = 'Cargando el ingreso con Google…';
+    Promise.all([pedir('panelConfiguracion'), cargarGoogle()]).then(function (r) {
+      google.accounts.id.initialize({
+        client_id: r[0].clientId,
+        callback: alIngresar,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        ux_mode: 'popup'
+      });
+      google.accounts.id.renderButton(el('thBotonGoogle'), {
+        type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
+        shape: 'rectangular', locale: 'es', width: 280
+      });
+      googleListo = true;
+      el('thEstadoIngreso').textContent = 'Use el botón para ingresar.';
+    }).catch(function (e) {
+      el('thEstadoIngreso').textContent = '';
+      el('thAviso').textContent = e.message;
+    });
+  }
+
+  function alIngresar(respuesta) {
+    idToken = respuesta && respuesta.credential;
+    if (!idToken) return;
+    cargar();
+  }
+
+  function cerrarSesion() {
+    idToken = null;
+    filas = [];
+    if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+    prepararIngreso();
+  }
+
+  /** La credencial de Google dura una hora; al vencer se pide de nuevo. */
+  function manejarError(e, mostrar) {
+    if (/no tiene acceso/.test(e.message)) {
+      idToken = null;
+      prepararIngreso(filas.length
+        ? 'Su sesión terminó. Ingrese de nuevo.'
+        : e.message + ' Si cree que debería tenerlo, verifique que ingresó con la cuenta correcta.');
+      return;
+    }
+    mostrar(e.message);
+  }
+
+  /* ---------- Datos ---------- */
+
+  function cargar() {
+    vista('thCarga');
+    pedir('panelDatos', { idToken: idToken }).then(function (d) {
+      filas = d.filas || [];
+      el('thUsuario').textContent = d.usuario;
+      el('thActualizado').textContent = 'datos al ' + d.actualizado;
+      indicadores(d.indicadores || {});
+      llenarFiltros();
+      aplicarFiltros();
+      vista('thContenido');
+    }).catch(function (e) {
+      manejarError(e, function (m) {
+        el('thTextoError').textContent = m;
+        vista('thError');
+      });
+    });
+  }
+
+  function indicadores(i) {
+    el('thTotal').textContent = i.total || 0;
+    el('thAdministrativos').textContent = i.administrativos || 0;
+    el('thDocentes').textContent = i.docentes || 0;
+    el('thSemana').textContent = i.ultimaSemana || 0;
+    barras(el('thPorUnidad'), i.porUnidad);
+    barras(el('thPorNivel'), i.porNivel);
+    barras(el('thPorGenero'), i.porGenero);
+    barras(el('thPorSemana'), i.porSemana);
+  }
+
+  function barras(lista, datos) {
+    lista.textContent = '';
+    datos = datos || [];
+    var total = datos.reduce(function (s, d) { return s + d.cantidad; }, 0);
+    if (!total) { lista.appendChild(crear('li', 'th-vacio', 'Aún no hay registros.')); return; }
+    var max = datos.reduce(function (m, d) { return Math.max(m, d.cantidad); }, 1);
+    datos.forEach(function (d) {
+      var li = crear('li', 'th-barra-fila');
+      li.appendChild(crear('span', 'th-barra-etiqueta', d.etiqueta));
+      li.appendChild(crear('span', 'th-barra-cantidad', String(d.cantidad)));
+      var riel = crear('div', 'th-barra-riel');
+      var valor = crear('div', 'th-barra-valor');
+      valor.style.width = Math.round(d.cantidad / max * 100) + '%';
+      riel.appendChild(valor);
+      li.appendChild(riel);
+      lista.appendChild(li);
+    });
+  }
+
+  /* ---------- Tabla y filtros ---------- */
+
+  function normalizar(t) {
+    return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  }
+  function soloDocumento(t) { return String(t || '').replace(/[.\s-]/g, '').toLowerCase(); }
+
+  function llenarFiltros() {
+    llenarSelect(el('thFiltroVinculacion'), unicos('vinculacion'));
+    llenarSelect(el('thFiltroUnidad'), unicos('unidad'));
+  }
+  function unicos(campo) {
+    var vistos = {};
+    filas.forEach(function (f) { if (f[campo]) vistos[f[campo]] = true; });
+    return Object.keys(vistos).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+  }
+  function llenarSelect(select, valores) {
+    var actual = select.value;
+    while (select.options.length > 1) select.remove(1);
+    valores.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v;
+      o.textContent = v;
+      select.appendChild(o);
+    });
+    if (valores.indexOf(actual) !== -1) select.value = actual;
+  }
+
+  function aplicarFiltros() {
+    var q = normalizar(el('thBuscar').value);
+    var qDoc = soloDocumento(el('thBuscar').value);
+    var vinc = el('thFiltroVinculacion').value;
+    var unidad = el('thFiltroUnidad').value;
+    filtradas = filas.filter(function (f) {
+      if (vinc && f.vinculacion !== vinc) return false;
+      if (unidad && f.unidad !== unidad) return false;
+      if (!q) return true;
+      return (qDoc && soloDocumento(f.documento).indexOf(qDoc) !== -1) ||
+             normalizar(f.nombres + ' ' + f.apellidos).indexOf(q) !== -1;
+    });
+    pagina = 1;
+    tabla();
+  }
+
+  function tabla() {
+    var cuerpo = el('thCuerpoTabla');
+    cuerpo.textContent = '';
+    var paginas = Math.max(1, Math.ceil(filtradas.length / POR_PAGINA));
+    if (pagina > paginas) pagina = paginas;
+    var inicio = (pagina - 1) * POR_PAGINA;
+
+    filtradas.slice(inicio, inicio + POR_PAGINA).forEach(function (f) {
+      var nombre = (f.nombres + ' ' + f.apellidos).trim();
+      var tr = document.createElement('tr');
+      tr.appendChild(crear('td', 'th-num', f.documento));
+      tr.appendChild(crear('td', null, nombre));
+      tr.appendChild(crear('td', null, f.vinculacion));
+      tr.appendChild(crear('td', null, f.unidad));
+      tr.appendChild(crear('td', null, f.dependencia));
+      tr.appendChild(crear('td', 'th-num', f.fecha));
+      var td = document.createElement('td');
+      var ver = crear('button', 'th-ver', 'Ver ficha');
+      ver.type = 'button';
+      ver.setAttribute('aria-label', 'Ver ficha de ' + nombre);
+      ver.addEventListener('click', function () { abrirFicha(f, ver); });
+      td.appendChild(ver);
+      tr.appendChild(td);
+      cuerpo.appendChild(tr);
+    });
+
+    var vacia = el('thTablaVacia');
+    vacia.hidden = filtradas.length > 0;
+    vacia.textContent = filas.length === 0
+      ? 'Aún nadie ha diligenciado el formulario.'
+      : 'Ningún registro coincide con la búsqueda. Revise el número o quite los filtros.';
+    el('thContador').textContent = filtradas.length + ' de ' + filas.length + ' registros';
+    el('thInfoPagina').textContent = filtradas.length ? 'Página ' + pagina + ' de ' + paginas : '';
+    el('thAnterior').disabled = pagina <= 1;
+    el('thSiguiente').disabled = pagina >= paginas;
+  }
+
+  /* ---------- Ficha ---------- */
+
+  function abrirFicha(fila, boton) {
+    botonOrigen = boton || null;
+    fichaActual = null;
+    var turno = ++turnoFicha;
+    el('thFichaNombre').textContent = (fila.nombres + ' ' + fila.apellidos).trim();
+    el('thFichaRadicado').textContent = 'Radicado ' + fila.radicado;
+    el('thFichaContenido').hidden = true;
+    var estado = el('thFichaEstado');
+    estado.hidden = false;
+    estado.className = 'th-estado';
+    estado.textContent = 'Cargando ficha…';
+    el('thFondoFicha').hidden = false;
+    el('thFicha').focus();
+
+    pedir('panelFicha', { idToken: idToken, radicado: fila.radicado }).then(function (f) {
+      if (turno !== turnoFicha) return;
+      fichaActual = f;
+      secciones(el('thSecciones'), f.secciones);
+      estado.hidden = true;
+      el('thFichaContenido').hidden = false;
+    }).catch(function (e) {
+      if (turno !== turnoFicha) return;
+      manejarError(e, function (m) {
+        estado.className = 'th-estado error';
+        estado.textContent = m;
+      });
+      if (!idToken) cerrarFicha();
+    });
+  }
+
+  function cerrarFicha() {
+    turnoFicha++;
+    fichaActual = null;
+    el('thFondoFicha').hidden = true;
+    if (botonOrigen && document.body.contains(botonOrigen)) botonOrigen.focus();
+  }
+
+  function secciones(contenedor, lista) {
+    contenedor.textContent = '';
+    (lista || []).forEach(function (s) {
+      var bloque = crear('div', 'th-seccion');
+      bloque.appendChild(crear('h3', null, s.titulo));
+      var dl = document.createElement('dl');
+      s.filas.forEach(function (f) {
+        var fila = crear('div', 'th-fila');
+        fila.appendChild(crear('dt', null, f[0]));
+        fila.appendChild(crear('dd', null, f[1]));
+        dl.appendChild(fila);
+      });
+      bloque.appendChild(dl);
+      contenedor.appendChild(bloque);
+    });
+  }
+
+  /** La misma constancia en PDF que recibe quien diligencia el formulario. */
+  function descargarPdf() {
+    if (!fichaActual) return;
+    var datos = { radicado: fichaActual.radicado, fecha: fichaActual.fecha,
+                  correo: fichaActual.correo, secciones: fichaActual.secciones };
+    var archivo = new Blob([generarPdfRegistro(datos)], { type: 'application/pdf' });
+    var url = URL.createObjectURL(archivo);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'registro-unimeta-' + datos.radicado.replace(/[^A-Za-z0-9-]/g, '') + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+
+  /** Usa la misma hoja de impresion del formulario (#constanciaImpresion). */
+  function imprimir() {
+    if (!fichaActual) return;
+    var pag = el('constanciaImpresion');
+    pag.textContent = '';
+    pag.appendChild(crear('h1', null, 'Actualización de Datos del Personal – UNIMETA'));
+    pag.appendChild(crear('p', null, 'Nombre: ' + fichaActual.nombre));
+    pag.appendChild(crear('p', null, 'Radicado: ' + fichaActual.radicado));
+    pag.appendChild(crear('p', null, 'Fecha y hora de envío: ' + fichaActual.fecha));
+    pag.appendChild(crear('p', null, 'Correo registrado: ' + fichaActual.correo));
+    var cont = crear('div');
+    secciones(cont, fichaActual.secciones);
+    pag.appendChild(cont);
+    window.print();
+  }
+
+  /* ---------- Eventos ---------- */
+
+  document.addEventListener('DOMContentLoaded', function () {
+    el('enlaceTH').addEventListener('click', function (e) { e.preventDefault(); abrir(); });
+    window.addEventListener('hashchange', function () {
+      if (location.hash === '#talento-humano') abrir();
+    });
+    el('thIrFormulario').addEventListener('click', irAlFormulario);
+    el('thSalir').addEventListener('click', cerrarSesion);
+    el('thReintentar').addEventListener('click', cargar);
+    el('thBuscar').addEventListener('input', aplicarFiltros);
+    el('thFiltroVinculacion').addEventListener('change', aplicarFiltros);
+    el('thFiltroUnidad').addEventListener('change', aplicarFiltros);
+    el('thLimpiar').addEventListener('click', function () {
+      el('thBuscar').value = '';
+      el('thFiltroVinculacion').value = '';
+      el('thFiltroUnidad').value = '';
+      aplicarFiltros();
+      el('thBuscar').focus();
+    });
+    el('thAnterior').addEventListener('click', function () { pagina--; tabla(); });
+    el('thSiguiente').addEventListener('click', function () { pagina++; tabla(); });
+    el('thCerrarFicha').addEventListener('click', cerrarFicha);
+    el('thPdf').addEventListener('click', descargarPdf);
+    el('thImprimir').addEventListener('click', imprimir);
+    el('thFondoFicha').addEventListener('click', function (e) {
+      if (e.target === el('thFondoFicha')) cerrarFicha();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !el('thFondoFicha').hidden) cerrarFicha();
+    });
+  });
+
+  return {
+    abrir: abrir,
+    trasArranque: trasArranque,
+    pedidoEnLaDireccion: function () { return location.hash === '#talento-humano'; }
+  };
+})();
+</script>
+
 <script>window.URL_SERVIDOR = "https://script.google.com/macros/s/AKfycbw7h5je56SzVEgpRmNRcxuDon-mD9MjVuImIXQnKWSIjCkxAhOF1rt1FewUT9lgqIWbtg/exec";</script>
 <script>
 /* ============================================================
@@ -2113,6 +2759,7 @@ var CONFIG = null;              // catalogos y textos que llegan del servidor
 var pasoActual = 1;
 var TOTAL_PASOS = 10;
 var enviando = false;
+var arranqueEnCurso = false;
 
 var NOMBRES_PASOS = {
   1: 'Autorización',
@@ -2238,7 +2885,9 @@ function llamarServidor(accion, argumento, exito, fallo) {
 
 document.addEventListener('DOMContentLoaded', function () {
   $('btnReintentarAcceso').addEventListener('click', arrancarFormulario);
-  arrancarFormulario();
+  // La direccion terminada en #talento-humano abre el panel sin cargar el formulario.
+  if (PanelTH.pedidoEnLaDireccion()) PanelTH.abrir();
+  else arrancarFormulario();
 });
 
 function solicitarServidor(accion, argumento) {
@@ -2248,6 +2897,8 @@ function solicitarServidor(accion, argumento) {
 }
 
 function arrancarFormulario() {
+  if (arranqueEnCurso) return;
+  arranqueEnCurso = true;
   $('btnReintentarAcceso').hidden = true;
   $('estadoAcceso').textContent = 'Verificando acceso al formulario…';
   solicitarServidor('obtenerConfiguracionAcceso').then(function (datos) {
@@ -2258,10 +2909,13 @@ function arrancarFormulario() {
     return solicitarServidor('obtenerDatosIniciales', { turnstileToken: token });
   }).then(function (datos) {
     iniciar(datos);
+    arranqueEnCurso = false;
     $('verificacionAcceso').hidden = true;
     $('contenido').hidden = false;
     $('zonaProgreso').hidden = false;
+    PanelTH.trasArranque();
   }).catch(function (err) {
+    arranqueEnCurso = false;
     $('estadoAcceso').textContent = (err && (err.message || err.mensaje)) || SIN_CONEXION;
     $('btnReintentarAcceso').hidden = false;
   });
