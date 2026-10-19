@@ -2169,14 +2169,60 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-cifra p:first-child { font-size: 13px; color: var(--color-texto-suave); }
 .th-cifra p:last-child { font-size: 32px; font-weight: 800; line-height: 1.2; }
 
-.th-graficos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
-.th-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.th-barra-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 14px; }
-.th-barra-etiqueta { overflow-wrap: anywhere; }
-.th-barra-cantidad { font-weight: 800; font-variant-numeric: tabular-nums; }
-.th-barra-riel { grid-column: 1 / -1; height: 8px; background: var(--color-azul-suave); }
-.th-barra-valor { height: 100%; background: var(--color-azul); transition: width 400ms ease; }
-.th-vacio { color: var(--color-texto-suave); font-size: 14px; }
+/* ---------- Graficos ----------
+   Paleta categorica validada (daltonismo y contraste) para fondo blanco.
+   El color sigue a la categoria, nunca al orden: Femenino siempre es la
+   serie 1, Docente siempre la serie 2. "Sin dato" va en gris. */
+.th {
+  --th-serie-1: #2a78d6;
+  --th-serie-2: #eb6834;
+  --th-serie-3: #1baf7a;
+  --th-serie-4: #eda100;
+  --th-serie-5: #e87ba4;
+  --th-sin-dato: #b9bdc4;
+  --th-area: rgba(42, 120, 214, .10);
+  --th-rejilla: #e8eaee;
+}
+.th-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
+.th-ancho { grid-column: 1 / -1; }
+.th-subtitulo { font-size: 13px; color: var(--color-texto-suave); margin: -8px 0 14px !important; }
+.th-vacio { color: var(--color-texto-suave); font-size: 14px; padding: 18px 0; }
+
+/* Tendencia por dia */
+.th-tendencia { position: relative; width: 100%; }
+.th-tendencia svg { display: block; width: 100%; overflow: visible; }
+.th-tendencia text { font-family: inherit; font-size: 11px; fill: var(--color-texto-suave); }
+.th-tendencia .th-etiqueta-valor { font-size: 12px; font-weight: 700; fill: var(--color-texto); }
+
+/* Barras horizontales: delgadas, punta redondeada, valor al final */
+.th-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.th-barra-fila { display: grid; grid-template-columns: minmax(110px, 40%) 1fr; align-items: center; gap: 12px; font-size: 13px; min-height: 26px; }
+.th-barra-etiqueta { color: var(--color-texto-medio); overflow-wrap: anywhere; line-height: 1.3; }
+.th-barra-zona { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.th-barra-valor { height: 12px; min-width: 2px; background: var(--th-serie-1); border-radius: 0 4px 4px 0; transition: width 500ms ease; }
+.th-barra-valor.cero { background: var(--th-rejilla); }
+.th-barra-cantidad { font-weight: 700; color: var(--color-texto); font-size: 13px; }
+.th-barra-cantidad.cero { color: var(--color-texto-suave); font-weight: 400; }
+
+/* Composicion: barra al 100 % por categoria + leyenda con cantidades */
+.th-comp + .th-comp { margin-top: 22px; }
+.th-comp-cabeza { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+.th-comp-cabeza strong { font-weight: 700; color: var(--color-texto); }
+.th-comp-cabeza span { color: var(--color-texto-suave); }
+.th-comp-barra { display: flex; gap: 2px; height: 18px; }
+.th-comp-segmento { min-width: 3px; height: 100%; transition: flex-grow 500ms ease; }
+.th-comp-segmento:last-child { border-radius: 0 4px 4px 0; }
+.th-leyenda { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+.th-leyenda li { display: flex; align-items: center; gap: 6px; color: var(--color-texto-medio); }
+.th-leyenda i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.th-leyenda b { color: var(--color-texto); font-weight: 700; }
+
+/* Tooltip compartido */
+.th-tip {
+  position: fixed; z-index: 80; pointer-events: none; max-width: 260px;
+  background: #1e2024; color: #fff; font-size: 12px; line-height: 1.4;
+  padding: 6px 10px; border-radius: 4px; box-shadow: 0 4px 14px rgba(0, 0, 0, .2);
+}
 
 .th-filtros { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 14px; }
 .th-campo label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
@@ -2195,33 +2241,47 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th tbody tr:hover { background: var(--color-superficie-2); }
 .th td.th-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .th .th-ver {
-  padding: 6px 12px; background: var(--color-superficie);
+  padding: 6px 12px; background: var(--color-superficie); white-space: nowrap;
   border: 1px solid var(--color-primario-borde); color: var(--color-primario-oscuro);
 }
 .th .th-ver:hover { background: var(--color-primario-suave); }
 .th-pie { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 14px; }
 .th-paginacion { display: flex; gap: 8px; }
 
+/* ---------- Ficha: tarjeta centrada ---------- */
 .th-fondo-ficha {
   position: fixed; inset: 0; z-index: 60; background: rgba(30, 32, 36, .55);
-  display: flex; justify-content: flex-end;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
 }
 .th-ficha {
-  background: var(--color-superficie); width: min(720px, 100%); height: 100%;
-  overflow-y: auto; padding: 22px; border-left: 4px solid var(--color-primario);
+  background: var(--color-superficie); width: min(900px, 100%); max-height: calc(100vh - 48px);
+  display: flex; flex-direction: column; border-top: 4px solid var(--color-primario);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .28); animation: thAparecer 180ms ease-out;
 }
+@keyframes thAparecer { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 .th-ficha h2, .th-ficha h3, .th-ficha p { margin: 0; }
 .th-ficha button { padding: 10px 16px; }
-.th-ficha-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
-.th-ficha-cabecera h2 { font-size: 20px; font-weight: 800; }
-.th-ficha-cabecera p { font-size: 14px; color: var(--color-texto-suave); }
-.th-ficha-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-.th-seccion { margin-bottom: 18px; border: 1px solid var(--color-borde); }
-.th-seccion h3 { background: var(--color-azul-suave); font-size: 14px; font-weight: 800; padding: 8px 12px; margin: 0; }
-.th-seccion dl { margin: 0; }
-.th-fila { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--color-borde); font-size: 14px; }
-.th-fila dt { color: var(--color-texto-suave); }
-.th-fila dd { margin: 0; overflow-wrap: anywhere; }
+.th-ficha-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid var(--color-borde); }
+.th-ficha-rotulo { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-primario-oscuro); margin-bottom: 4px !important; }
+.th-ficha-cabecera h2 { font-size: 22px; font-weight: 800; line-height: 1.2; }
+.th-ficha-radicado { font-size: 13px; color: var(--color-texto-suave); margin-top: 2px !important; }
+.th-chips { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.th-chips li { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--color-azul-suave); color: var(--color-texto-medio); }
+.th-ficha-lateral { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
+.th .th-cerrar, .th-ficha .th-cerrar {
+  width: 36px; height: 36px; padding: 0; font-size: 22px; line-height: 1; border-radius: 50%;
+  background: transparent; color: var(--color-texto-suave); border: 1px solid transparent;
+}
+.th-ficha .th-cerrar:hover { background: var(--color-superficie-2); color: var(--color-texto); }
+.th-ficha-acciones { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.th-ficha-cuerpo { overflow-y: auto; padding: 20px 24px 24px; background: var(--color-superficie-2); }
+.th-seccion { background: var(--color-superficie); border: 1px solid var(--color-borde); margin-bottom: 14px; }
+.th-seccion h3 { font-size: 13px; font-weight: 800; letter-spacing: .02em; padding: 10px 16px; margin: 0; color: var(--color-texto); }
+.th-seccion dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.th-dato { padding: 10px 16px; border-top: 1px solid #e8eaee; }
+.th-dato.ancho { grid-column: 1 / -1; }
+.th-ficha .th-dato dt, #constanciaImpresion .th-dato dt { font-size: 12px; font-weight: 600; color: var(--color-texto-suave); margin-bottom: 2px; }
+.th-ficha .th-dato dd, #constanciaImpresion .th-dato dd { margin: 0; font-size: 14px; color: var(--color-texto); overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {
   .th-cifras { grid-template-columns: repeat(2, 1fr); }
@@ -2229,17 +2289,29 @@ function verificarVisitante(accion, contenedor, opciones) {
   .th-filtros { grid-template-columns: 1fr 1fr; }
   .th-filtros .th-campo:first-child { grid-column: 1 / -1; }
 }
+@media (max-width: 680px) {
+  .th-fondo-ficha { padding: 0; align-items: stretch; }
+  .th-ficha { max-height: none; height: 100%; }
+  .th-ficha-cabecera { flex-direction: column; padding: 16px; }
+  .th-ficha-lateral { flex-direction: row-reverse; justify-content: space-between; width: 100%; }
+  .th-ficha-cuerpo { padding: 14px; }
+  .th-seccion dl { grid-template-columns: 1fr; }
+}
 @media (max-width: 560px) {
   .th { padding: 20px 16px 48px; }
   .th-filtros { grid-template-columns: 1fr; }
-  .th-fila { grid-template-columns: 1fr; gap: 0; }
-  .th-ficha { padding: 16px; }
+  .th-barra-fila { grid-template-columns: 1fr; gap: 2px; }
   .enlace-th { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .th-ficha, .th-barra-valor, .th-comp-segmento { animation: none; transition: none; }
 }
 @media print {
   #constanciaImpresion .th-seccion { break-inside: avoid; margin-top: 14px; border: 1px solid #999; }
   #constanciaImpresion .th-seccion h3 { background: #eee; }
-  #constanciaImpresion .th-fila { border-top: 1px solid #ccc; }
+  #constanciaImpresion .th-seccion dl { display: grid; grid-template-columns: 1fr 1fr; }
+  #constanciaImpresion .th-dato { border-top: 1px solid #ccc; padding: 6px 10px; }
+  #constanciaImpresion .th-dato.ancho { grid-column: 1 / -1; }
 }
 </style>
 
@@ -2278,10 +2350,26 @@ function verificarVisitante(accion, contenedor, opciones) {
         <div class="th-cifra"><p>Últimos 7 días</p><p id="thSemana">0</p></div>
       </div>
       <div class="th-graficos">
-        <div class="th-tarjeta"><h3>Por unidad directiva</h3><ul class="th-barras" id="thPorUnidad"></ul></div>
-        <div class="th-tarjeta"><h3>Por nivel de formación más alto</h3><ul class="th-barras" id="thPorNivel"></ul></div>
-        <div class="th-tarjeta"><h3>Por género</h3><ul class="th-barras" id="thPorGenero"></ul></div>
-        <div class="th-tarjeta"><h3>Registros por semana</h3><ul class="th-barras" id="thPorSemana"></ul></div>
+        <div class="th-tarjeta th-ancho">
+          <h3>Registros por día</h3>
+          <p class="th-subtitulo" id="thSubTendencia">Últimos 14 días</p>
+          <div class="th-tendencia" id="thTendencia"></div>
+        </div>
+        <div class="th-tarjeta">
+          <h3>Composición del personal</h3>
+          <p class="th-subtitulo">Proporción sobre el total de registros</p>
+          <div id="thComposicion"></div>
+        </div>
+        <div class="th-tarjeta">
+          <h3>Nivel de formación más alto</h3>
+          <p class="th-subtitulo">En orden de nivel, de bachiller a posdoctorado</p>
+          <ul class="th-barras" id="thPorNivel"></ul>
+        </div>
+        <div class="th-tarjeta th-ancho">
+          <h3>Por unidad directiva</h3>
+          <p class="th-subtitulo">De mayor a menor número de registros</p>
+          <ul class="th-barras" id="thPorUnidad"></ul>
+        </div>
       </div>
     </section>
 
@@ -2333,19 +2421,23 @@ function verificarVisitante(accion, contenedor, opciones) {
 <!-- Ficha de una persona -->
 <div class="th-fondo-ficha" id="thFondoFicha" hidden>
   <section class="th-ficha" id="thFicha" role="dialog" aria-modal="true" aria-labelledby="thFichaNombre" tabindex="-1">
-    <div class="th-ficha-cabecera">
+    <header class="th-ficha-cabecera">
       <div>
+        <p class="th-ficha-rotulo">Ficha del funcionario</p>
         <h2 id="thFichaNombre"></h2>
-        <p id="thFichaRadicado"></p>
+        <p class="th-ficha-radicado" id="thFichaRadicado"></p>
+        <ul class="th-chips" id="thFichaChips"></ul>
       </div>
-      <button type="button" class="btn-secundario" id="thCerrarFicha">Cerrar</button>
-    </div>
-    <p class="th-estado" id="thFichaEstado" role="status" hidden></p>
-    <div id="thFichaContenido" hidden>
-      <div class="th-ficha-acciones">
-        <button type="button" class="btn-primario" id="thPdf">Descargar PDF</button>
-        <button type="button" class="btn-secundario" id="thImprimir">Imprimir</button>
+      <div class="th-ficha-lateral">
+        <button type="button" class="th-cerrar" id="thCerrarFicha" aria-label="Cerrar ficha">&times;</button>
+        <div class="th-ficha-acciones">
+          <button type="button" class="btn-primario" id="thPdf" disabled>Descargar PDF</button>
+          <button type="button" class="btn-secundario" id="thImprimir" disabled>Imprimir</button>
+        </div>
       </div>
+    </header>
+    <div class="th-ficha-cuerpo">
+      <p class="th-estado" id="thFichaEstado" role="status" hidden></p>
       <div id="thSecciones"></div>
     </div>
   </section>
@@ -2508,10 +2600,11 @@ var PanelTH = (function () {
       filas = d.filas || [];
       el('thUsuario').textContent = d.usuario;
       el('thActualizado').textContent = 'datos al ' + d.actualizado;
-      indicadores(d.indicadores || {});
       llenarFiltros();
       aplicarFiltros();
+      // Primero a la vista: los graficos se dibujan con el ancho real.
       vista('thContenido');
+      indicadores(d.indicadores || {});
     }).catch(function (e) {
       manejarError(e, function (m) {
         el('thTextoError').textContent = m;
@@ -2520,35 +2613,220 @@ var PanelTH = (function () {
     });
   }
 
+  /* ---------- Dashboard ---------- */
+
+  var SVG = 'http://www.w3.org/2000/svg';
+  var ultimosIndicadores = null;
+
+  /** Orden y color fijos por categoria: el color sigue a la categoria, no al puesto. */
+  var COLORES = {
+    vinculacion: { 'Administrativo': 'var(--th-serie-1)', 'Docente': 'var(--th-serie-2)' },
+    genero: { 'Femenino': 'var(--th-serie-1)', 'Masculino': 'var(--th-serie-2)', 'No binario': 'var(--th-serie-3)',
+              'Otro': 'var(--th-serie-4)', 'Prefiero no responder': 'var(--th-serie-5)' }
+  };
+  var NIVELES = ['Bachiller', 'Técnico laboral', 'Técnico profesional', 'Tecnólogo',
+    'Profesional universitario', 'Especialización', 'Maestría', 'Doctorado', 'Posdoctorado', 'Otro'];
+
   function indicadores(i) {
+    ultimosIndicadores = i;
     el('thTotal').textContent = i.total || 0;
     el('thAdministrativos').textContent = i.administrativos || 0;
     el('thDocentes').textContent = i.docentes || 0;
     el('thSemana').textContent = i.ultimaSemana || 0;
-    barras(el('thPorUnidad'), i.porUnidad);
-    barras(el('thPorNivel'), i.porNivel);
-    barras(el('thPorGenero'), i.porGenero);
-    barras(el('thPorSemana'), i.porSemana);
+    tendencia(el('thTendencia'), i.porDia || []);
+    composicion(el('thComposicion'), i);
+    barras(el('thPorNivel'), enOrden(i.porNivel || [], ordenNiveles()), true);
+    barras(el('thPorUnidad'), i.porUnidad || [], false);
   }
 
-  function barras(lista, datos) {
+  function ordenNiveles() {
+    var c = (window.CONFIG_PUBLICA && CONFIG_PUBLICA.catalogos) || (window.CONFIG && CONFIG && CONFIG.catalogos);
+    return (c && c.nivelesFormacion) || NIVELES;
+  }
+
+  /** Todas las categorias del orden dado (con cero si no hay), mas las que no esten en el. */
+  function enOrden(datos, orden) {
+    var cuenta = {};
+    datos.forEach(function (d) { cuenta[d.etiqueta] = d.cantidad; });
+    var lista = orden.map(function (e) { return { etiqueta: e, cantidad: cuenta[e] || 0 }; });
+    datos.forEach(function (d) { if (orden.indexOf(d.etiqueta) === -1) lista.push(d); });
+    return lista;
+  }
+
+  function porcentaje(n, total) {
+    if (!total) return '0 %';
+    var p = n / total * 100;
+    return (p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1).replace('.', ',')) + ' %';
+  }
+  function registros(n) { return n + (n === 1 ? ' registro' : ' registros'); }
+
+  /* Tooltip: uno solo para todo el panel */
+  var tip = null;
+  function mostrarTip(texto, x, y) {
+    if (!tip) { tip = crear('div', 'th-tip'); tip.setAttribute('role', 'presentation'); document.body.appendChild(tip); }
+    tip.textContent = texto;
+    tip.hidden = false;
+    var ancho = tip.offsetWidth, alto = tip.offsetHeight;
+    var izq = Math.min(Math.max(8, x - ancho / 2), window.innerWidth - ancho - 8);
+    var arriba = y - alto - 12 < 8 ? y + 16 : y - alto - 12;
+    tip.style.left = izq + 'px';
+    tip.style.top = arriba + 'px';
+  }
+  function ocultarTip() { if (tip) tip.hidden = true; }
+  function conTip(nodo, texto) {
+    nodo.addEventListener('mousemove', function (e) { mostrarTip(texto, e.clientX, e.clientY); });
+    nodo.addEventListener('mouseleave', ocultarTip);
+  }
+
+  /** Barras horizontales delgadas, valor al final de cada barra. */
+  function barras(lista, datos, mostrarCeros) {
     lista.textContent = '';
-    datos = datos || [];
     var total = datos.reduce(function (s, d) { return s + d.cantidad; }, 0);
     if (!total) { lista.appendChild(crear('li', 'th-vacio', 'Aún no hay registros.')); return; }
     var max = datos.reduce(function (m, d) { return Math.max(m, d.cantidad); }, 1);
     datos.forEach(function (d) {
+      if (!d.cantidad && !mostrarCeros) return;
       var li = crear('li', 'th-barra-fila');
       li.appendChild(crear('span', 'th-barra-etiqueta', d.etiqueta));
-      li.appendChild(crear('span', 'th-barra-cantidad', String(d.cantidad)));
-      var riel = crear('div', 'th-barra-riel');
-      var valor = crear('div', 'th-barra-valor');
-      valor.style.width = Math.round(d.cantidad / max * 100) + '%';
-      riel.appendChild(valor);
-      li.appendChild(riel);
+      var zona = crear('span', 'th-barra-zona');
+      var barra = crear('span', 'th-barra-valor' + (d.cantidad ? '' : ' cero'));
+      // El 100 % se reserva para la mas larga, dejando aire para el numero.
+      barra.style.width = d.cantidad ? 'calc((100% - 44px) * ' + (d.cantidad / max).toFixed(4) + ')' : '2px';
+      zona.appendChild(barra);
+      zona.appendChild(crear('span', 'th-barra-cantidad' + (d.cantidad ? '' : ' cero'), String(d.cantidad)));
+      li.appendChild(zona);
+      conTip(li, d.etiqueta + ': ' + registros(d.cantidad) + ' (' + porcentaje(d.cantidad, total) + ')');
       lista.appendChild(li);
     });
   }
+
+  /** Barras al 100 % de vinculacion y genero, con leyenda que lleva los numeros. */
+  function composicion(cont, i) {
+    cont.textContent = '';
+    if (!i.total) { cont.appendChild(crear('p', 'th-vacio', 'Aún no hay registros.')); return; }
+    [['Vinculación', i.porVinculacion || [], COLORES.vinculacion],
+     ['Género', i.porGenero || [], COLORES.genero]].forEach(function (g) {
+      var orden = Object.keys(g[2]);
+      var datos = enOrden(g[1], orden).filter(function (d) { return d.cantidad > 0; });
+      var total = datos.reduce(function (s, d) { return s + d.cantidad; }, 0);
+      var bloque = crear('div', 'th-comp');
+      var cabeza = crear('div', 'th-comp-cabeza');
+      cabeza.appendChild(crear('strong', null, g[0]));
+      cabeza.appendChild(crear('span', null, registros(total)));
+      bloque.appendChild(cabeza);
+
+      var barra = crear('div', 'th-comp-barra');
+      barra.setAttribute('role', 'img');
+      barra.setAttribute('aria-label', g[0] + ': ' + datos.map(function (d) {
+        return d.etiqueta + ' ' + d.cantidad + ' (' + porcentaje(d.cantidad, total) + ')';
+      }).join(', '));
+      var leyenda = crear('ul', 'th-leyenda');
+      datos.forEach(function (d) {
+        var color = g[2][d.etiqueta] || 'var(--th-sin-dato)';
+        var seg = crear('span', 'th-comp-segmento');
+        seg.style.flexGrow = d.cantidad;
+        seg.style.background = color;
+        conTip(seg, d.etiqueta + ': ' + registros(d.cantidad) + ' (' + porcentaje(d.cantidad, total) + ')');
+        barra.appendChild(seg);
+        var li = crear('li');
+        var punto = crear('i');
+        punto.style.background = color;
+        li.appendChild(punto);
+        li.appendChild(crear('span', null, d.etiqueta));
+        li.appendChild(crear('b', null, d.cantidad + ' · ' + porcentaje(d.cantidad, total)));
+        leyenda.appendChild(li);
+      });
+      bloque.appendChild(barra);
+      bloque.appendChild(leyenda);
+      cont.appendChild(bloque);
+    });
+  }
+
+  function svg(etiqueta, atributos, padre) {
+    var n = document.createElementNS(SVG, etiqueta);
+    Object.keys(atributos || {}).forEach(function (k) { n.setAttribute(k, atributos[k]); });
+    if (padre) padre.appendChild(n);
+    return n;
+  }
+
+  /** Tope "redondo" del eje: 4, 5, 10, 20, 25, 50… para marcas limpias. */
+  function topeEje(max) {
+    if (max <= 4) return 4;
+    var p = Math.pow(10, Math.floor(Math.log10(max)));
+    var pasos = [1, 2, 2.5, 5, 10];
+    for (var k = 0; k < pasos.length; k++) if (pasos[k] * p >= max) return pasos[k] * p;
+    return 10 * p;
+  }
+
+  /** Linea con area: registros por dia. Pasar el mouse muestra el dia. */
+  function tendencia(cont, dias) {
+    cont.textContent = '';
+    var total = dias.reduce(function (s, d) { return s + d.cantidad; }, 0);
+    el('thSubTendencia').textContent = 'Últimos ' + dias.length + ' días · ' + registros(total);
+    if (!dias.length) return;
+
+    var ancho = Math.max(280, cont.clientWidth || 600), alto = 200;
+    var m = { arriba: 18, derecha: 36, abajo: 28, izquierda: 32 };
+    var w = ancho - m.izquierda - m.derecha, h = alto - m.arriba - m.abajo;
+    var tope = topeEje(dias.reduce(function (x, d) { return Math.max(x, d.cantidad); }, 0));
+    var x = function (i) { return m.izquierda + (dias.length === 1 ? w / 2 : i * w / (dias.length - 1)); };
+    var y = function (v) { return m.arriba + h - v / tope * h; };
+
+    var raiz = svg('svg', { viewBox: '0 0 ' + ancho + ' ' + alto, height: alto, role: 'img',
+      'aria-label': 'Registros por día en los últimos ' + dias.length + ' días: ' + registros(total) +
+        '; hoy ' + dias[dias.length - 1].cantidad + '.' });
+
+    // Rejilla y eje: lineas finas y discretas
+    [0, tope / 2, tope].forEach(function (v) {
+      svg('line', { x1: m.izquierda, x2: m.izquierda + w, y1: y(v), y2: y(v), stroke: 'var(--th-rejilla)', 'stroke-width': 1 }, raiz);
+      var t = svg('text', { x: m.izquierda - 8, y: y(v) + 4, 'text-anchor': 'end' }, raiz);
+      t.textContent = String(Math.round(v * 10) / 10).replace('.', ',');
+    });
+    var cada = Math.max(1, Math.ceil(dias.length / Math.max(2, Math.floor(w / 64))));
+    dias.forEach(function (d, i) {
+      if (i % cada && i !== dias.length - 1) return;
+      var t = svg('text', { x: x(i), y: alto - 8, 'text-anchor': 'middle' }, raiz);
+      t.textContent = i === dias.length - 1 ? 'Hoy' : d.etiqueta;
+    });
+
+    var puntos = dias.map(function (d, i) { return x(i) + ',' + y(d.cantidad); });
+    svg('path', { d: 'M' + x(0) + ',' + y(0) + ' L' + puntos.join(' L') + ' L' + x(dias.length - 1) + ',' + y(0) + ' Z',
+      fill: 'var(--th-area)', stroke: 'none' }, raiz);
+    svg('path', { d: 'M' + puntos.join(' L'), fill: 'none', stroke: 'var(--th-serie-1)', 'stroke-width': 2,
+      'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, raiz);
+
+    // Etiqueta directa solo en el ultimo punto (hoy)
+    var ultimo = dias.length - 1;
+    svg('circle', { cx: x(ultimo), cy: y(dias[ultimo].cantidad), r: 4, fill: 'var(--th-serie-1)',
+      stroke: '#fff', 'stroke-width': 2 }, raiz);
+    var valor = svg('text', { x: x(ultimo) + 8, y: y(dias[ultimo].cantidad) + 4, 'class': 'th-etiqueta-valor' }, raiz);
+    valor.textContent = String(dias[ultimo].cantidad);
+
+    // Capa de interaccion: guia vertical + punto del dia bajo el mouse
+    var guia = svg('line', { y1: m.arriba, y2: m.arriba + h, stroke: '#9aa0a8', 'stroke-width': 1, visibility: 'hidden' }, raiz);
+    var marca = svg('circle', { r: 5, fill: 'var(--th-serie-1)', stroke: '#fff', 'stroke-width': 2, visibility: 'hidden' }, raiz);
+    var paso = dias.length > 1 ? w / (dias.length - 1) : w;
+    dias.forEach(function (d, i) {
+      var zona = svg('rect', { x: x(i) - paso / 2, y: m.arriba, width: paso, height: h, fill: 'transparent' }, raiz);
+      zona.addEventListener('mousemove', function (e) {
+        guia.setAttribute('x1', x(i)); guia.setAttribute('x2', x(i)); guia.setAttribute('visibility', 'visible');
+        marca.setAttribute('cx', x(i)); marca.setAttribute('cy', y(d.cantidad)); marca.setAttribute('visibility', 'visible');
+        mostrarTip((i === ultimo ? 'Hoy (' + d.etiqueta + ')' : d.etiqueta) + ': ' + registros(d.cantidad), e.clientX, e.clientY);
+      });
+      zona.addEventListener('mouseleave', function () {
+        guia.setAttribute('visibility', 'hidden'); marca.setAttribute('visibility', 'hidden'); ocultarTip();
+      });
+    });
+    cont.appendChild(raiz);
+  }
+
+  /** La tendencia se mide con el ancho real: se redibuja al cambiar el tamano. */
+  var esperaRedibujo = null;
+  window.addEventListener('resize', function () {
+    if (!activo || !ultimosIndicadores) return;
+    clearTimeout(esperaRedibujo);
+    esperaRedibujo = setTimeout(function () { tendencia(el('thTendencia'), ultimosIndicadores.porDia || []); }, 150);
+  });
 
   /* ---------- Tabla y filtros ---------- */
 
@@ -2638,13 +2916,21 @@ var PanelTH = (function () {
     fichaActual = null;
     var turno = ++turnoFicha;
     el('thFichaNombre').textContent = (fila.nombres + ' ' + fila.apellidos).trim();
-    el('thFichaRadicado').textContent = 'Radicado ' + fila.radicado;
-    el('thFichaContenido').hidden = true;
+    el('thFichaRadicado').textContent = 'Radicado ' + fila.radicado + ' · Documento ' + fila.documento;
+    var chips = el('thFichaChips');
+    chips.textContent = '';
+    [fila.vinculacion, fila.dependencia || fila.unidad, fila.fecha && 'Registrado el ' + fila.fecha]
+      .filter(Boolean).forEach(function (t) { chips.appendChild(crear('li', null, t)); });
+    el('thSecciones').textContent = '';
+    el('thPdf').disabled = true;
+    el('thImprimir').disabled = true;
     var estado = el('thFichaEstado');
     estado.hidden = false;
     estado.className = 'th-estado';
     estado.textContent = 'Cargando ficha…';
     el('thFondoFicha').hidden = false;
+    // El fondo no se desplaza mientras la ficha esta abierta.
+    document.documentElement.style.overflow = 'hidden';
     el('thFicha').focus();
 
     pedir('panelFicha', { idToken: idToken, radicado: fila.radicado }).then(function (f) {
@@ -2652,7 +2938,8 @@ var PanelTH = (function () {
       fichaActual = f;
       secciones(el('thSecciones'), f.secciones);
       estado.hidden = true;
-      el('thFichaContenido').hidden = false;
+      el('thPdf').disabled = false;
+      el('thImprimir').disabled = false;
     }).catch(function (e) {
       if (turno !== turnoFicha) return;
       manejarError(e, function (m) {
@@ -2667,9 +2954,27 @@ var PanelTH = (function () {
     turnoFicha++;
     fichaActual = null;
     el('thFondoFicha').hidden = true;
+    document.documentElement.style.overflow = '';
+    ocultarTip();
     if (botonOrigen && document.body.contains(botonOrigen)) botonOrigen.focus();
   }
 
+  /** Con la ficha abierta, el tabulador recorre solo sus botones. */
+  function mantenerFoco(e) {
+    if (e.key !== 'Tab' || el('thFondoFicha').hidden) return;
+    var botones = Array.prototype.filter.call(el('thFicha').querySelectorAll('button'), function (b) {
+      return !b.disabled && b.offsetParent !== null;
+    });
+    if (!botones.length) return;
+    var primero = botones[0], ultimo = botones[botones.length - 1];
+    if (e.shiftKey && (document.activeElement === primero || document.activeElement === el('thFicha'))) {
+      e.preventDefault(); ultimo.focus();
+    } else if (!e.shiftKey && document.activeElement === ultimo) {
+      e.preventDefault(); primero.focus();
+    }
+  }
+
+  /** Datos en dos columnas; los textos largos ocupan el ancho completo. */
   function secciones(contenedor, lista) {
     contenedor.textContent = '';
     (lista || []).forEach(function (s) {
@@ -2677,7 +2982,7 @@ var PanelTH = (function () {
       bloque.appendChild(crear('h3', null, s.titulo));
       var dl = document.createElement('dl');
       s.filas.forEach(function (f) {
-        var fila = crear('div', 'th-fila');
+        var fila = crear('div', 'th-dato' + (String(f[1]).length > 48 ? ' ancho' : ''));
         fila.appendChild(crear('dt', null, f[0]));
         fila.appendChild(crear('dd', null, f[1]));
         dl.appendChild(fila);
@@ -2749,6 +3054,7 @@ var PanelTH = (function () {
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !el('thFondoFicha').hidden) cerrarFicha();
+      mantenerFoco(e);
     });
   });
 
