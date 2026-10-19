@@ -1942,7 +1942,7 @@ function generarPdfRegistro(datos) {
   var limite = 60;
   var interlineado = 12;
   var rellenoFila = 12;
-  var tituloConstancia = 'Constancia de registro de datos personales';
+  var tituloConstancia = 'Registro de Información del Personal';
   var seccionActual = null;
   var rojo = '0.80 0.05 0.13';
   var tinta = '0.10 0.15 0.21';
@@ -1950,13 +1950,15 @@ function generarPdfRegistro(datos) {
   var secciones = datos.secciones || [];
   var identificacion = secciones.filter(function (s) { return /identificaci/i.test(textoPdf(s.titulo)); })[0] || secciones[0];
   var campos = identificacion ? (identificacion.filas || []) : [];
-  function buscar(etiqueta) {
-    var fila = campos.filter(function (f) { return textoPdf(f[0]).toLowerCase() === etiqueta; })[0];
+  function buscar(etiqueta, filas) {
+    var fila = (filas || campos).filter(function (f) { return textoPdf(f[0]).toLowerCase() === etiqueta; })[0];
     return fila ? textoPdf(fila[1]) : '';
   }
   var nombre = textoPdf(datos.nombre) ||
     [buscar('nombres'), buscar('apellidos')].filter(Boolean).join(' ') || buscar('nombre completo');
   var vinculacion = textoPdf(datos.tipoVinculacion) || buscar('tipo de vinculación');
+  var adscripcion = secciones.filter(function (s) { return /adscripci/i.test(textoPdf(s.titulo)); })[0];
+  var cargo = textoPdf(datos.cargo) || buscar('cargo') || buscar('cargo', adscripcion ? adscripcion.filas : []);
 
   function linea(texto, fuente, tamano, x, posicionY, color) {
     actual += (color || tinta) + ' rg BT /' + fuente + ' ' + tamano + ' Tf ' + x + ' ' + posicionY +
@@ -1977,7 +1979,7 @@ function generarPdfRegistro(datos) {
     actual = '';
     actual += 'q 124 0 0 46 ' + margen + ' 774 cm /Logo Do Q\n';
     derecha('TALENTO HUMANO', 'F2', 9, 802, tinta);
-    derecha('CORPORACIÓN UNIVERSITARIA DEL META', 'F1', 7.3, 788, gris);
+    if (!paginas.length) derecha('CORPORACIÓN UNIVERSITARIA DEL META', 'F1', 7.3, 788, gris);
     raya(margen, margen + ancho, 762, rojo, 2);
     y = 740;
     if (paginas.length) {
@@ -2049,18 +2051,22 @@ function generarPdfRegistro(datos) {
     parrafo(nombre, 'F2', 17, margen, 21, ancho, tinta);
     y -= 8;
   }
-  var radicado = partirPdf(datos.radicado, 9.5, 170);
-  var fecha = partirPdf(datos.fecha, 9.3, 151);
-  var tipos = partirPdf(vinculacion, 9.5, 145);
-  var altoMeta = 27 + Math.max(radicado.length, fecha.length, tipos.length) * 12;
+  var detallePersonal = [];
+  if (vinculacion) detallePersonal.push('Vinculación: ' + vinculacion);
+  if (cargo) detallePersonal.push('Cargo: ' + cargo);
+  if (detallePersonal.length) {
+    parrafo(detallePersonal.join(' | '), 'F1', 9.5, margen, 12, ancho, gris);
+    y -= 8;
+  }
+  var radicado = partirPdf(datos.radicado, 9.5, 238);
+  var fecha = partirPdf(datos.fecha, 9.3, 230);
+  var altoMeta = 27 + Math.max(radicado.length, fecha.length) * 12;
   rectangulo(margen, y, ancho, altoMeta, '0.96 0.97 0.98');
   rectangulo(margen, y, 3, altoMeta, rojo);
   linea('RADICADO', 'F2', 7, margen + 12, y - 13, gris);
-  linea('FECHA Y HORA DE ENVÍO', 'F2', 7, margen + 195, y - 13, gris);
-  linea('TIPO DE VINCULACIÓN', 'F2', 7, margen + 359, y - 13, gris);
+  linea('FECHA Y HORA DE REGISTRO', 'F2', 7, margen + 274, y - 13, gris);
   radicado.forEach(function (l, i) { linea(l, 'F2', 9.5, margen + 12, y - 28 - i * 12); });
-  fecha.forEach(function (l, i) { linea(l, 'F1', 9.3, margen + 195, y - 28 - i * 12); });
-  tipos.forEach(function (l, i) { linea(l, 'F2', 9.5, margen + 359, y - 28 - i * 12); });
+  fecha.forEach(function (l, i) { linea(l, 'F1', 9.3, margen + 274, y - 28 - i * 12); });
   y -= altoMeta + 15;
   parrafo('Correo registrado: ' + textoPdf(datos.correo), 'F1', 8.5, margen, 11, ancho, gris);
   y -= 9;
