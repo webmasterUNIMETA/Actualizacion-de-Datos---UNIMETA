@@ -2708,7 +2708,7 @@ function verificarVisitante(accion, contenedor, opciones) {
         <section class="th-lectura" aria-labelledby="thLecturaTitulo"><h4 id="thLecturaTitulo">Lectura del perfil</h4><p id="thLecturaTexto"></p><p id="thLecturaUso"></p></section>
         <div class="th-biblioteca" id="thErrorGraficos" role="status" hidden><p>No se pudieron cargar los gráficos. Las cantidades siguen disponibles en «Ver datos».</p><button type="button" class="btn-secundario" id="thReintentarGraficos">Reintentar gráficos</button></div>
         <div class="th-graficos" id="thGraficos"></div>
-        <p class="th-alcance">El análisis describe los registros activos recibidos, una vez por documento. No representa a empleados que aún no han respondido. «Sin dato» y «Sin detalle registrado» se muestran cuando falta información. Los filtros de esta vista son independientes de la búsqueda de la tabla.</p>
+        <p class="th-alcance">Todos los porcentajes usan como base el total de personas con registro activo que diligenciaron el formulario, una vez por documento. Al filtrar se muestran las cantidades seleccionadas, manteniendo ese total como base. El promedio de edad usa únicamente edades válidas de la selección. «Sin dato» y «Sin detalle registrado» identifican información ausente.</p>
       </div>
     </section>
 
@@ -2996,39 +2996,40 @@ var PanelTH = (function () {
   function pintarAnalisis() {
     var d = datosAnalisis;
     if (!d) return;
+    var base = d.universo;
     el('thAnalisisContenido').hidden = false;
     el('thAnalisisContexto').textContent = cifra(d.total) + ' de ' + cifra(d.universo) + ' personas con registro activo · ' +
       (d.filtros.vinculacion || 'Todas las vinculaciones') + ' · ' + (d.filtros.unidad || 'Todas las unidades') + ' · Datos al ' + d.actualizado;
     el('thPersonasAnalizadas').textContent = cifra(d.total);
-    el('thBasePersonas').textContent = 'Según los filtros del análisis';
+    el('thBasePersonas').textContent = porcentaje(d.total, base) + ' del total de ' + cifra(base) + ' participantes';
     el('thEdadPromedio').textContent = d.edadPromedio === null ? '—' : d.edadPromedio.toLocaleString('es-CO') + ' años';
     el('thBaseEdad').textContent = cifra(d.edadesValidas) + ' personas con edad válida';
-    el('thConHijos').textContent = porcentaje(d.conHijos, d.total);
-    el('thBaseHijos').textContent = cifra(d.conHijos) + ' de ' + cifra(d.total) + ' personas analizadas';
-    el('thActividadFisica').textContent = porcentaje(d.deporteSi, d.total);
-    el('thBaseDeporte').textContent = cifra(d.deporteSi) + ' de ' + cifra(d.total) + ' personas analizadas';
+    el('thConHijos').textContent = porcentaje(d.conHijos, base);
+    el('thBaseHijos').textContent = cifra(d.conHijos) + ' de ' + cifra(base) + ' participantes totales';
+    el('thActividadFisica').textContent = porcentaje(d.deporteSi, base);
+    el('thBaseDeporte').textContent = cifra(d.deporteSi) + ' de ' + cifra(base) + ' participantes totales';
     var texto, uso, titulo;
     if (!d.total) {
       titulo = 'No hay registros para esta selección';
       texto = 'Cambie o restablezca los filtros para analizar otros registros.';
-      uso = 'No se calculan porcentajes ni promedios cuando no hay personas en la selección.';
+      uso = base ? 'Los porcentajes se calculan sobre los ' + cifra(base) + ' participantes totales; no hay personas que coincidan con los filtros.' : 'Aún no hay participantes para calcular porcentajes o promedios.';
     } else if (temaAnalisis === 'perfil') {
       titulo = 'Lectura del perfil';
       var nivel = principal(d.nivel), ciudad = principal(d.ciudad);
-      texto = 'Se describen ' + cifra(d.total) + ' personas.';
-      if (nivel) texto += ' El nivel de formación declarado más frecuente es ' + nivel.etiqueta + ': ' + cifra(nivel.cantidad) + ' personas (' + porcentaje(nivel.cantidad, d.total) + ').';
-      if (ciudad) texto += ' La residencia más reportada es ' + ciudad.etiqueta + ', con ' + cifra(ciudad.cantidad) + ' personas (' + porcentaje(ciudad.cantidad, d.total) + ').';
+      texto = 'Se describen ' + cifra(d.total) + ' de los ' + cifra(base) + ' participantes totales.';
+      if (nivel) texto += ' El nivel de formación declarado más frecuente es ' + nivel.etiqueta + ': ' + cifra(nivel.cantidad) + ' personas (' + porcentaje(nivel.cantidad, base) + ').';
+      if (ciudad) texto += ' La residencia más reportada es ' + ciudad.etiqueta + ', con ' + cifra(ciudad.cantidad) + ' personas (' + porcentaje(ciudad.cantidad, base) + ').';
       uso = 'Esta composición permite orientar programas de cualificación y actividades según las etapas de vida y la ubicación del personal que respondió.';
     } else if (temaAnalisis === 'bienestar') {
       titulo = 'Lectura de bienestar e intereses';
-      texto = cifra(d.deporteSi) + ' personas (' + porcentaje(d.deporteSi, d.total) + ') declaran practicar actividad física y ' + cifra(d.culturaSi) + ' (' + porcentaje(d.culturaSi, d.total) + ') actividades culturales o artísticas. ' +
+      texto = cifra(d.deporteSi) + ' personas (' + porcentaje(d.deporteSi, base) + ') declaran practicar actividad física y ' + cifra(d.culturaSi) + ' (' + porcentaje(d.culturaSi, base) + ') actividades culturales o artísticas. ' +
         cifra(d.interesados) + ' manifiestan interés en actividades institucionales y ' + cifra(d.talVez) + ' responden «Tal vez».';
       var frecuencia = principal(d.frecuencia);
       if (frecuencia) texto += ' Entre quienes practican deporte, la frecuencia más reportada es «' + frecuencia.etiqueta + '» (' + cifra(frecuencia.cantidad) + ' personas).';
       uso = 'Las preferencias permiten priorizar la oferta de Bienestar. Una persona puede marcar varias opciones: los porcentajes de estos gráficos pueden sumar más de 100 %.';
     } else {
       titulo = 'Lectura del entorno familiar';
-      texto = cifra(d.conHijos) + ' personas (' + porcentaje(d.conHijos, d.total) + ') reportan tener hijos. ' +
+      texto = cifra(d.conHijos) + ' personas (' + porcentaje(d.conHijos, base) + ') reportan tener hijos. ' +
         (d.familiasConCantidad ? 'Se registran ' + cifra(d.hijosRegistrados) + ' hijos en ' + cifra(d.familiasConCantidad) + ' respuestas con cantidad informada.' : 'No hay cantidades de hijos informadas en esta selección.');
       uso = 'Estos datos ayudan a dimensionar actividades familiares. Se distinguen las personas con hijos de la cantidad de hijos; las respuestas sin cantidad permanecen visibles.';
     }
@@ -3078,29 +3079,29 @@ var PanelTH = (function () {
     var definiciones;
     if (temaAnalisis === 'perfil') {
       definiciones = [
-        ['Formación académica', ordenados(d.nivel, CONFIG_PUBLICA_SEGURA().nivelesFormacion), d.total, 'Máximo nivel declarado por las personas de la selección.'],
-        ['Etapas de vida', ordenados(d.edad, ['18–24 años','25–34 años','35–44 años','45–54 años','55 años o más','Sin dato']), d.total, 'Edad calculada desde el nacimiento; se usa la edad registrada si no hay fecha.', true],
-        ['Distribución por género', d.genero, d.total, 'Categorías declaradas por las personas que respondieron.'],
-        ['Lugar de residencia', d.ciudad, d.total, 'Ciudad registrada. Permite reconocer la concentración geográfica.']
+        ['Formación académica', ordenados(d.nivel, CONFIG_PUBLICA_SEGURA().nivelesFormacion), d.universo, 'Máximo nivel declarado por las personas de la selección.'],
+        ['Etapas de vida', ordenados(d.edad, ['18–24 años','25–34 años','35–44 años','45–54 años','55 años o más','Sin dato']), d.universo, 'Edad calculada desde el nacimiento; se usa la edad registrada si no hay fecha.', true],
+        ['Distribución por género', d.genero, d.universo, 'Categorías declaradas por las personas que respondieron.'],
+        ['Lugar de residencia', d.ciudad, d.universo, 'Ciudad registrada. Permite reconocer la concentración geográfica.']
       ];
     } else if (temaAnalisis === 'bienestar') {
       definiciones = [
-        ['Deportes y actividad física', d.deportes, d.deporteSi, 'Selección múltiple. Base: personas que declaran practicar actividad física.'],
-        ['Prácticas culturales y artísticas', d.actividadesCulturales, d.culturaSi, 'Selección múltiple. Base: personas que declaran práctica cultural o artística.'],
-        ['Intereses institucionales', d.actividadesInteres, d.interesados + d.talVez, 'Selección múltiple. Base: personas que responden Sí o Tal vez a participar.'],
-        ['Pasatiempos del personal', d.pasatiempos, d.total, 'Selección múltiple y opcional. Los textos libres se agrupan en Otras actividades.']
+        ['Deportes y actividad física', d.deportes, d.universo, 'Selección múltiple de quienes practican actividad física.'],
+        ['Prácticas culturales y artísticas', d.actividadesCulturales, d.universo, 'Selección múltiple de quienes declaran práctica cultural o artística.'],
+        ['Intereses institucionales', d.actividadesInteres, d.universo, 'Preferencias de quienes responden Sí o Tal vez a participar.'],
+        ['Pasatiempos del personal', d.pasatiempos, d.universo, 'Selección múltiple y opcional. Los textos libres se agrupan en Otras actividades.']
       ];
     } else {
       definiciones = [
-        ['Hijos por persona', ordenados(d.familia, ['Sin hijos','1 hijo','2 hijos','3 hijos o más','Con hijos, sin cantidad','Sin dato']), d.total, 'Cuenta personas por situación familiar; cada persona aparece una vez.'],
-        ['Estado civil', d.estadoCivil, d.total, 'Estado civil declarado por las personas de la selección.']
+        ['Hijos por persona', ordenados(d.familia, ['Sin hijos','1 hijo','2 hijos','3 hijos o más','Con hijos, sin cantidad','Sin dato']), d.universo, 'Cuenta personas por situación familiar; cada persona aparece una vez.'],
+        ['Estado civil', d.estadoCivil, d.universo, 'Estado civil declarado por las personas de la selección.']
       ];
     }
     var pendientes = [];
     definiciones.forEach(function (def, indice) {
       var tarjeta = crear('article', 'th-tarjeta th-grafico');
       tarjeta.appendChild(crear('h3', null, def[0]));
-      tarjeta.appendChild(crear('p', 'th-base', def[3] + ' Base: ' + cifra(def[2]) + ' personas.'));
+      tarjeta.appendChild(crear('p', 'th-base', def[3] + ' Base porcentual: ' + cifra(def[2]) + ' participantes totales.'));
       if (!def[1].length || !d.total) tarjeta.appendChild(crear('p', 'th-vacio', 'No hay datos para este gráfico.'));
       else {
         var zona = crear('div', 'th-lienzo');
