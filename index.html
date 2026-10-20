@@ -4517,7 +4517,7 @@ function agregarHijo() {
     mostrarAviso('Límite alcanzado', 'No es posible registrar más de ' + CONFIG.limites.maxHijos + ' hijos.');
     return;
   }
-  hijos.push({ uid: ++secuencia, nombre: '', fechaNacimiento: '', depende: 'Si', vinculoUnimeta: 'No' });
+  hijos.push({ uid: ++secuencia, numDocumento: '', nombre: '', fechaNacimiento: '', depende: 'Si', vinculoUnimeta: 'No' });
   pintarHijos();
 }
 
@@ -4548,6 +4548,10 @@ function pintarHijos() {
     var rej = crear('div', 'rejilla');
     rej.appendChild(campoTexto('Nombres y apellidos del hijo(a)', 'hijo-nombre-' + h.uid, h.nombre, true,
       function (v) { h.nombre = v; }, 'text', vNombreCompletoHijo));
+    var documento = campoTexto('Número de documento del hijo(a) (opcional)', 'hijo-documento-' + h.uid,
+      h.numDocumento, false, function (v) { h.numDocumento = v; }, 'text', vDocumentoHijo);
+    documento.querySelector('input').maxLength = CONFIG.limites.maxLongitudDocumento;
+    rej.appendChild(documento);
     rej.appendChild(campoFecha('Fecha de nacimiento', 'hijo-fecha-' + h.uid,
       h.fechaNacimiento, true, function (v) { h.fechaNacimiento = v; }, vFechaHijo));
     rej.appendChild(campoOpciones('¿Depende económicamente de usted?', 'hijo-dep-' + h.uid,
@@ -4982,6 +4986,10 @@ function vDocumento(v) {
   };
 }
 
+function vDocumentoHijo(v) {
+  return String(v || '').trim() ? vDocumento(v) : { ok: true };
+}
+
 function vTelefono(esObligatorio) {
   return function (v) {
     var d = soloDigitos(v);
@@ -5380,6 +5388,8 @@ function validarPaso(n) {
         ok = false;
       } else {
         hijos.forEach(function (h) {
+          var rDocumento = vDocumentoHijo(h.numDocumento);
+          if (!rDocumento.ok) { marcarError('hijo-documento-' + h.uid, rDocumento.mensaje); ok = false; }
           var rNombre = vNombreCompletoHijo(h.nombre);
           if (!rNombre.ok) { marcarError('hijo-nombre-' + h.uid, rNombre.mensaje); ok = false; }
           var rFechaHijo = vFechaHijo(h.fechaNacimiento);
@@ -5576,7 +5586,7 @@ function recolectar() {
     tieneHijos: marcadoUnico('tieneHijos'),
     hijos: marcadoUnico('tieneHijos') === 'Si'
       ? hijos.map(function (h) {
-          return { nombre: h.nombre, fechaNacimiento: h.fechaNacimiento,
+          return { numDocumento: h.numDocumento, nombre: h.nombre, fechaNacimiento: h.fechaNacimiento,
             depende: h.depende, vinculoUnimeta: h.vinculoUnimeta };
         })
       : [],
@@ -5681,7 +5691,8 @@ function construirResumen() {
   familia.push(['Tiene hijos', etiquetaOpcion(d.tieneHijos)]);
   d.hijos.forEach(function (h, i) {
     familia.push(['Hijo(a) ' + (i + 1),
-      h.nombre + ' - Nacimiento: ' + formatearFecha(h.fechaNacimiento) + ' - ' +
+      h.nombre + (h.numDocumento ? ' - Documento: ' + h.numDocumento : '') +
+      ' - Nacimiento: ' + formatearFecha(h.fechaNacimiento) + ' - ' +
       calcularEdad(h.fechaNacimiento) + ' años - ' +
       (h.depende === 'Si' ? 'depende económicamente' : 'no depende económicamente') +
       ' - UNIMETA: ' + etiquetaOpcion(h.vinculoUnimeta)]);
