@@ -1593,7 +1593,13 @@ body.modal-abierto { overflow: hidden; }
     <p class="paso-descripcion">Entidades de salud, pensiones, cesantías y riesgos laborales.</p>
 
     <div class="rejilla">
-      <div class="campo" id="campo-eps"><label for="eps">EPS<span class="obligatorio">*</span></label><input id="eps" type="text" maxlength="150"><p class="mensaje-error" id="error-eps">Indique su EPS.</p></div>
+      <div class="campo" id="campo-eps">
+        <label for="eps">EPS<span class="obligatorio">*</span></label>
+        <input id="eps" type="text" maxlength="150" list="listaEps" autocomplete="off"
+               placeholder="Escriba el nombre de su EPS" aria-describedby="ayuda-eps">
+        <p class="ayuda" id="ayuda-eps">Sugerencias para Villavicencio. Si su EPS no aparece, escríbala completa.</p>
+        <p class="mensaje-error" id="error-eps">Indique su EPS.</p>
+      </div>
       <div class="campo" id="campo-fondoPensiones"><label for="fondoPensiones">Fondo de pensiones<span class="obligatorio">*</span></label><input id="fondoPensiones" type="text" maxlength="150"><p class="mensaje-error" id="error-fondoPensiones">Indique su fondo de pensiones.</p></div>
     </div>
 
@@ -1868,6 +1874,14 @@ body.modal-abierto { overflow: hidden; }
 
 <datalist id="listaCiudades"></datalist>
 <datalist id="listaInstituciones"></datalist>
+<!-- Sugerencias de EPS con presencia local documentada en 2026. Ver FUENTES_EPS.md. -->
+<datalist id="listaEps">
+  <option value="Capital Salud"></option>
+  <option value="Famisanar"></option>
+  <option value="Nueva EPS"></option>
+  <option value="Salud Total"></option>
+  <option value="Sanitas"></option>
+</datalist>
 
 <script>
 /* Logotipo institucional embebido: no requiere conexiones al descargar. */
@@ -4133,6 +4147,8 @@ function conectarEventos() {
   // Enter no debe enviar el formulario a mitad de camino
   $('formulario').addEventListener('submit', function (e) { e.preventDefault(); });
   $('formulario').addEventListener('keydown', function (e) {
+    // Elegir una sugerencia con Enter no debe avanzar al siguiente paso.
+    if (e.defaultPrevented) return;
     if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
       e.preventDefault();
       if (pasoActual < TOTAL_PASOS) avanzar();
