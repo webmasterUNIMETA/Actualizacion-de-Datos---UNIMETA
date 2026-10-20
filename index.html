@@ -910,7 +910,7 @@ body.modal-abierto { overflow: hidden; }
 
 .resumen-fila:last-child { border-bottom: 0; }
 .resumen-etiqueta { color: var(--color-texto-suave); }
-.resumen-valor { font-weight: 600; word-break: break-word; }
+.resumen-valor { font-weight: 600; word-break: break-word; white-space: pre-line; }
 .resumen-vacio { color: var(--color-texto-tenue); font-style: italic; font-weight: 400; }
 
 .btn-corregir {
@@ -2088,6 +2088,7 @@ function generarPdfRegistro(datos) {
   var limite = 60;
   var interlineado = 12;
   var rellenoFila = 12;
+  var SECCION_CORTA = 230;   // puntos: unas cinco filas; se mantiene completa
   var tituloConstancia = 'Registro de Información del Personal';
   var seccionActual = null;
   var rojo = '0.80 0.05 0.13';
@@ -2230,7 +2231,10 @@ function generarPdfRegistro(datos) {
     // secciones completas que todavía pueden aprovechar el espacio disponible.
     var altoPrimero = medidaCampo(filas[0]);
     var altoMinimo = Math.min(altoPrimero, 48);
-    espacio(altoTitulo + 3 + altoMinimo, false);
+    // Una seccion corta no se parte: si no cabe completa, pasa entera a la
+    // pagina siguiente. Asi no quedan restos de uno o dos renglones sueltos.
+    var altoSeccion = altoTitulo + 3 + filas.reduce(function (s, f) { return s + medidaCampo(f); }, 0);
+    espacio(altoSeccion <= SECCION_CORTA ? altoSeccion : altoTitulo + 3 + altoMinimo, false);
     seccionActual = info;
     seccion(info, false);
     filas.forEach(function (f, j) { campo(f[0], f[1], j); });
@@ -2561,7 +2565,7 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-dato { padding: 10px 16px; border-top: 1px solid #e8eaee; }
 .th-dato.ancho { grid-column: 1 / -1; }
 .th-ficha .th-dato dt, #constanciaImpresion .th-dato dt { font-size: 12px; font-weight: 600; color: var(--color-texto-suave); margin-bottom: 2px; }
-.th-ficha .th-dato dd, #constanciaImpresion .th-dato dd { margin: 0; font-size: 14px; color: var(--color-texto); overflow-wrap: anywhere; }
+.th-ficha .th-dato dd, #constanciaImpresion .th-dato dd { margin: 0; font-size: 14px; color: var(--color-texto); overflow-wrap: anywhere; white-space: pre-line; line-height: 1.55; }
 
 @media (max-width: 900px) {
   .th-graficos { grid-template-columns: 1fr; }
@@ -3322,7 +3326,9 @@ var PanelTH = (function () {
       bloque.appendChild(crear('h3', null, s.titulo));
       var dl = document.createElement('dl');
       s.filas.forEach(function (f) {
-        var fila = crear('div', 'th-dato' + (String(f[1]).length > 48 ? ' ancho' : ''));
+        // Hijos y estudios llegan en varias lineas rotuladas: ocupan todo el ancho.
+        var largo = String(f[1]).length > 48 || String(f[1]).indexOf('\n') !== -1;
+        var fila = crear('div', 'th-dato' + (largo ? ' ancho' : ''));
         fila.appendChild(crear('dt', null, f[0]));
         fila.appendChild(crear('dd', null, f[1]));
         dl.appendChild(fila);
@@ -5689,13 +5695,17 @@ function construirResumen() {
     familia.push(['Institución del cónyuge', d.institucionConyuge]);
   }
   familia.push(['Tiene hijos', etiquetaOpcion(d.tieneHijos)]);
+  // Cada hijo y cada estudio en su propio renglon, con un dato rotulado por
+  // linea: el PDF respeta los saltos de linea y el resumen los muestra igual.
   d.hijos.forEach(function (h, i) {
-    familia.push(['Hijo(a) ' + (i + 1),
-      h.nombre + (h.numDocumento ? ' - Documento: ' + h.numDocumento : '') +
-      ' - Nacimiento: ' + formatearFecha(h.fechaNacimiento) + ' - ' +
-      calcularEdad(h.fechaNacimiento) + ' años - ' +
-      (h.depende === 'Si' ? 'depende económicamente' : 'no depende económicamente') +
-      ' - UNIMETA: ' + etiquetaOpcion(h.vinculoUnimeta)]);
+    familia.push(['Hijo(a) ' + (i + 1), lineasRotuladas([
+      h.nombre,
+      ['Documento', h.numDocumento],
+      ['Fecha de nacimiento', formatearFecha(h.fechaNacimiento) +
+        ' (' + calcularEdad(h.fechaNacimiento) + ' años)'],
+      ['Depende económicamente', h.depende === 'Si' ? 'Sí' : 'No'],
+      ['Relación con UNIMETA', etiquetaOpcion(h.vinculoUnimeta)]
+    ])]);
   });
   bloque(cont, 'Información familiar', 5, familia);
 
@@ -5729,11 +5739,14 @@ function construirResumen() {
 
   var estudios = [['Nivel más alto alcanzado', d.nivelFormacionMaximo]];
   d.formacion.forEach(function (f, i) {
-    estudios.push(['Estudio ' + (i + 1),
-      f.nivel + ' - ' + f.titulo + ' - ' + f.institucion +
-      ' (' + f.tipoInstitucion + '; ' + f.estado +
-      (f.estado === 'Graduado' ? ', grado: ' + formatearFecha(f.fechaGrado) : '') +
-      '; ' + f.ciudad + ', ' + f.pais + ')']);
+    estudios.push(['Estudio ' + (i + 1), lineasRotuladas([
+      f.nivel,
+      ['Título', f.titulo],
+      ['Institución', f.institucion + (f.tipoInstitucion ? ' (' + f.tipoInstitucion + ')' : '')],
+      ['Estado', f.estado + (f.estado === 'Graduado' && f.fechaGrado
+        ? ' · Fecha de grado: ' + formatearFecha(f.fechaGrado) : '')],
+      ['Lugar', [f.ciudad, f.pais].filter(Boolean).join(', ')]
+    ])]);
   });
   bloque(cont, 'Formación académica', 9, estudios);
 }
@@ -5764,6 +5777,18 @@ function bloque(contenedor, titulo, paso, filas) {
   b.appendChild(cuerpo);
 
   contenedor.appendChild(b);
+}
+
+/**
+ * Une en lineas un titulo y pares [rotulo, valor]; omite los vacios.
+ * Ej.: ['Maestria', ['Titulo', 'Magister']] -> "Maestria\nTitulo: Magister".
+ */
+function lineasRotuladas(partes) {
+  return partes.map(function (p) {
+    if (!Array.isArray(p)) return String(p || '').trim();
+    var v = String(p[1] === null || p[1] === undefined ? '' : p[1]).trim();
+    return v ? p[0] + ': ' + v : '';
+  }).filter(Boolean).join('\n');
 }
 
 function formatearFecha(iso) {
