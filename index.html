@@ -1599,7 +1599,12 @@ body.modal-abierto { overflow: hidden; }
                placeholder="Escriba el nombre de su EPS">
         <p class="mensaje-error" id="error-eps">Indique su EPS.</p>
       </div>
-      <div class="campo" id="campo-fondoPensiones"><label for="fondoPensiones">Fondo de pensiones<span class="obligatorio">*</span></label><input id="fondoPensiones" type="text" maxlength="150"><p class="mensaje-error" id="error-fondoPensiones">Indique su fondo de pensiones.</p></div>
+      <div class="campo" id="campo-fondoPensiones">
+        <label for="fondoPensiones">Fondo de pensiones<span class="obligatorio">*</span></label>
+        <input id="fondoPensiones" type="text" maxlength="150" list="listaFondosPensiones" autocomplete="off"
+               placeholder="Escriba el nombre de su fondo">
+        <p class="mensaje-error" id="error-fondoPensiones">Indique su fondo de pensiones.</p>
+      </div>
     </div>
 
     <div class="campo" id="campo-fondoCesantias">
@@ -1873,6 +1878,14 @@ body.modal-abierto { overflow: hidden; }
 
 <datalist id="listaCiudades"></datalist>
 <datalist id="listaInstituciones"></datalist>
+<!-- Fuente: https://www.colpensiones.gov.co/publicaciones/5065/comunicado-de-prensa/ -->
+<datalist id="listaFondosPensiones">
+  <option value="Colpensiones"></option>
+  <option value="Colfondos"></option>
+  <option value="Porvenir"></option>
+  <option value="Protección"></option>
+  <option value="Skandia"></option>
+</datalist>
 <datalist id="listaFondosCesantias" data-catalogo="fondosCesantias"></datalist>
 <!-- Sugerencias de EPS con presencia local documentada en 2026. Ver FUENTES_EPS.md. -->
 <datalist id="listaEps">
@@ -4009,6 +4022,7 @@ function activarAutocompletados() {
     input.setAttribute('aria-controls', lista.id);
     contenedor.appendChild(lista);
     var activa = -1;
+    var cierrePendiente;
 
     function cerrar() {
       lista.hidden = true; lista.innerHTML = ''; activa = -1;
@@ -4049,8 +4063,11 @@ function activarAutocompletados() {
       input.setAttribute('aria-expanded', opciones.length ? 'true' : 'false');
     }
     input.addEventListener('input', pintar);
-    input.addEventListener('focus', pintar);
-    input.addEventListener('blur', function () { setTimeout(cerrar, 120); });
+    input.addEventListener('focus', function () {
+      clearTimeout(cierrePendiente);
+      pintar();
+    });
+    input.addEventListener('blur', function () { cierrePendiente = setTimeout(cerrar, 120); });
     input.addEventListener('keydown', function (e) {
       var opciones = lista.children;
       if (e.key === 'Escape') { cerrar(); return; }
