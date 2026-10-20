@@ -3721,6 +3721,7 @@ function poblarCatalogos() {
  * pero a la persona se le muestra escrito correctamente.
  */
 function etiquetaOpcion(valor) {
+  if (valor === 'Estudiante y egresado') return 'Egresado y estudiante actual';
   return valor === 'Si' ? 'Sí' : valor;
 }
 
@@ -4439,9 +4440,16 @@ function pintarHijos() {
       h.fechaNacimiento, true, function (v) { h.fechaNacimiento = v; }, vFechaHijo));
     rej.appendChild(campoOpciones('¿Depende económicamente de usted?', 'hijo-dep-' + h.uid,
       ['Si', 'No'], h.depende, function (v) { h.depende = v; }));
-    rej.appendChild(campoOpciones('Relación académica con UNIMETA', 'hijo-unimeta-' + h.uid,
+    var relacion = campoOpciones('Relación académica con UNIMETA', 'hijo-unimeta-' + h.uid,
       ['No', 'Estudiante', 'Egresado', 'Estudiante y egresado'], h.vinculoUnimeta,
-      function (v) { h.vinculoUnimeta = v; }));
+      function (v) { h.vinculoUnimeta = v; });
+    var ayuda = crear('p', 'ayuda', 'Egresado y estudiante actual: terminó un programa en UNIMETA y actualmente cursa otro en la institución.');
+    ayuda.id = 'ayuda-hijo-unimeta-' + h.uid;
+    relacion.appendChild(ayuda);
+    relacion.querySelectorAll('input').forEach(function (radio) {
+      radio.setAttribute('aria-describedby', ayuda.id);
+    });
+    rej.appendChild(relacion);
     item.appendChild(rej);
 
     cont.appendChild(item);
@@ -5552,7 +5560,7 @@ function construirResumen() {
       h.nombre + ' - Nacimiento: ' + formatearFecha(h.fechaNacimiento) + ' - ' +
       calcularEdad(h.fechaNacimiento) + ' años - ' +
       (h.depende === 'Si' ? 'depende económicamente' : 'no depende económicamente') +
-      ' - UNIMETA: ' + h.vinculoUnimeta]);
+      ' - UNIMETA: ' + etiquetaOpcion(h.vinculoUnimeta)]);
   });
   bloque(cont, 'Información familiar', 5, familia);
 
