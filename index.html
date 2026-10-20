@@ -306,10 +306,10 @@ main {
   text-wrap: pretty;
 }
 
-/* Autocompletado propio para ciudades e instituciones. */
+/* Autocompletado: JavaScript lo ancla al campo, sin incluir ayudas ni errores. */
 .campo-autocompletar { position: relative; }
 .lista-autocompletar {
-  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; right: 0;
+  position: absolute; z-index: 40; top: 0; left: 0;
   max-height: 230px; overflow-y: auto; margin: 0; padding: 6px; list-style: none;
   background: #fff; border: 1px solid var(--color-borde); border-radius: 8px;
   box-shadow: 0 8px 22px rgba(23, 31, 45, .14);
@@ -4024,6 +4024,16 @@ function activarAutocompletados() {
     var activa = -1;
     var cierrePendiente;
 
+    // El anclaje es el input: una ayuda o error puede hacer más alta toda la fila.
+    function ubicarLista() {
+      lista.style.top = (input.offsetTop + input.offsetHeight + 6) + 'px';
+      lista.style.left = input.offsetLeft + 'px';
+      lista.style.width = input.offsetWidth + 'px';
+    }
+    var cambiosTamano = new ResizeObserver(ubicarLista);
+    cambiosTamano.observe(contenedor);
+    cambiosTamano.observe(input);
+
     function cerrar() {
       lista.hidden = true; lista.innerHTML = ''; activa = -1;
       input.setAttribute('aria-expanded', 'false');
@@ -4060,6 +4070,7 @@ function activarAutocompletados() {
         lista.appendChild(opcion);
       });
       lista.hidden = !opciones.length;
+      ubicarLista();
       input.setAttribute('aria-expanded', opciones.length ? 'true' : 'false');
     }
     input.addEventListener('input', pintar);
