@@ -6,7 +6,7 @@
   <!-- Un formulario con datos del personal no debe aparecer en buscadores. -->
   <meta name="robots" content="noindex, nofollow">
   <!-- Recursos autorizados del formulario y del control de acceso Turnstile. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://challenges.cloudflare.com https://accounts.google.com/gsi/client; frame-src https://challenges.cloudflare.com https://accounts.google.com/gsi/; style-src 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com https://accounts.google.com/gsi/; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://accounts.google.com/gsi/client; frame-src https://challenges.cloudflare.com https://accounts.google.com/gsi/; style-src 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com https://accounts.google.com/gsi/; base-uri 'none'; form-action 'none'">
   <title>Actualización de Datos del Personal - UNIMETA</title>
   <!-- Conexiones anticipadas: la verificacion y el servidor se usan apenas carga la pagina. -->
   <link rel="preconnect" href="https://challenges.cloudflare.com">
@@ -2447,71 +2447,58 @@ function verificarVisitante(accion, contenedor, opciones) {
 
 .th-tarjeta { background: var(--color-superficie); border: 1px solid var(--color-borde); border-radius: var(--th-radio, 10px); padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.025); }
 .th-tarjeta h3 { font-size: 15px; font-weight: 600; letter-spacing: -.015em; margin-bottom: 14px; }
-.th-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-bottom: 18px; padding: 14px 18px; background: var(--color-superficie); border: 1px solid var(--color-borde); border-radius: var(--th-radio); font-size: 13px; color: var(--color-texto-suave); }
-.th-resumen strong { font-weight: 600; color: var(--color-texto); font-variant-numeric: tabular-nums; }
-.th-resumen-total { display: flex; align-items: baseline; gap: 9px; }
-.th-resumen-total strong { font-size: 26px; letter-spacing: -.04em; line-height: 1.1; }
+.th-resumen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 24px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid var(--color-borde); border-radius: 10px; background: #fff; font-size: 13px; color: var(--color-texto-suave); }
+.th-resumen strong { color: var(--color-texto); font-weight: 600; font-variant-numeric: tabular-nums; }
+.th-resumen-total { display: flex; gap: 8px; align-items: baseline; }
+.th-resumen-total strong { font-size: 24px; letter-spacing: -.04em; }
 .th-resumen-tipos { display: flex; gap: 16px; flex-wrap: wrap; }
-.th-resumen-reciente { margin-left: auto !important; }
-.th-detalles { margin-top: 20px; border: 1px solid var(--color-borde); border-radius: var(--th-radio); background: var(--color-superficie); }
-.th-detalles > summary { padding: 16px 20px; font-size: 14px; font-weight: 500; cursor: pointer; }
-.th-detalles > summary:focus-visible { outline: 2px solid var(--color-azul); outline-offset: 3px; border-radius: var(--th-radio); }
-.th-detalles[open] > summary { border-bottom: 1px solid var(--color-borde); }
-.th-detalles .th-graficos { padding: 20px; margin-bottom: 0; gap: 16px; }
-
-/* ---------- Graficos ----------
-   Paleta categorica validada (daltonismo y contraste) para fondo blanco.
-   El color sigue a la categoria, nunca al orden: Femenino siempre es la
-   serie 1, Docente siempre la serie 2. "Sin dato" va en gris. */
-.th {
-  --th-serie-1: #2a78d6;
-  --th-serie-2: #eb6834;
-  --th-serie-3: #1baf7a;
-  --th-serie-4: #eda100;
-  --th-serie-5: #e87ba4;
-  --th-sin-dato: #b9bdc4;
-  --th-area: rgba(42, 120, 214, .10);
-  --th-rejilla: #e8eaee;
+.th-resumen-reciente { margin-left: auto !important; font-size: 12px; }
+.th-tabs { display: flex; gap: 4px; padding: 4px; width: fit-content; border-radius: 8px; background: #e8e9ed; margin-bottom: 20px; }
+.th .th-tab { background: transparent; border: 1px solid transparent; color: var(--color-texto-suave); padding: 8px 18px; }
+.th .th-tab[aria-selected="true"] { background: #fff; color: #102a43; border-color: #dfe3e8; box-shadow: 0 1px 3px rgba(16,42,67,.08); }
+.th-analisis-cabecera { margin-bottom: 20px; }
+.th-analisis-cabecera h3 { font-size: 23px; letter-spacing: -.03em; margin-bottom: 6px; }
+.th-analisis-cabecera p { font-size: 14px; color: var(--color-texto-suave); max-width: 80ch; }
+.th-filtros-analisis { display: grid; grid-template-columns: minmax(160px,1fr) minmax(200px,1.5fr) auto auto; gap: 12px; align-items: end; padding: 16px; margin-bottom: 20px; background: #fff; border: 1px solid var(--color-borde); border-radius: 10px; }
+.th-contexto { font-size: 12px; color: var(--color-texto-suave); margin-bottom: 14px !important; }
+.th-metricas { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 22px; }
+.th-metrica { background: #fff; border: 1px solid var(--color-borde); border-radius: 10px; padding: 18px; }
+.th-metrica > p { font-size: 12px; color: var(--color-texto-suave); }
+.th-metrica strong { display: block; font-size: 30px; line-height: 1.3; letter-spacing: -.04em; color: #102a43; font-weight: 600; margin: 8px 0 4px; font-variant-numeric: tabular-nums; }
+.th-metrica small { display: block; color: var(--color-texto-suave); font-size: 12px; line-height: 1.5; }
+.th-temas { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--color-borde); margin-bottom: 20px; }
+.th .th-tema { background: none; color: var(--color-texto-suave); border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 14px; }
+.th .th-tema[aria-pressed="true"] { color: #102a43; border-bottom-color: #df1425; font-weight: 600; }
+.th-lectura { border: 1px solid #dbe4ed; border-left: 3px solid #102a43; border-radius: 8px; background: #f5f8fb; padding: 18px 20px; margin-bottom: 20px; }
+.th-lectura h4 { color: #102a43; font-size: 14px; margin: 0 0 8px; }
+.th-lectura p { color: #34475b; font-size: 14px; line-height: 1.7; }
+.th-lectura p + p { font-size: 12px; color: var(--color-texto-suave); margin-top: 8px; }
+.th-graficos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin-bottom: 18px; }
+.th-grafico { min-width: 0; }
+.th-grafico h3 { margin-bottom: 5px; }
+.th-grafico .th-base { font-size: 12px; color: var(--color-texto-suave); margin-bottom: 18px; min-height: 36px; }
+.th-lienzo { position: relative; width: 100%; min-width: 0; }
+.th-valores { border-top: 1px solid var(--color-borde); padding-top: 12px; margin-top: 14px; font-size: 12px; }
+.th-valores summary { color: var(--color-texto-suave); cursor: pointer; }
+.th-valores dl { margin: 12px 0 0; }
+.th-valor { display: flex; gap: 12px; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #eef0f3; }
+.th-valor dt { overflow-wrap: anywhere; }
+.th-valor dd { margin: 0; flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+.th-vacio { color: var(--color-texto-suave); font-size: 14px; padding: 24px 0; }
+.th-alcance { font-size: 12px; color: var(--color-texto-suave); line-height: 1.65; padding: 4px 0; }
+.th-biblioteca { padding: 12px 16px; background: #fff7e6; color: #795118; border: 1px solid #f0dcae; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
+@media (max-width: 900px) {
+  .th-metricas { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .th-filtros-analisis { grid-template-columns: 1fr 1fr; }
 }
-.th-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
-.th-ancho { grid-column: 1 / -1; }
-.th-subtitulo { font-size: 13px; color: var(--color-texto-suave); margin: -8px 0 14px !important; }
-.th-vacio { color: var(--color-texto-suave); font-size: 14px; padding: 18px 0; }
-
-/* Tendencia por dia */
-.th-tendencia { position: relative; width: 100%; }
-.th-tendencia svg { display: block; width: 100%; overflow: visible; }
-.th-tendencia text { font-family: inherit; font-size: 11px; fill: var(--color-texto-suave); }
-.th-tendencia .th-etiqueta-valor { font-size: 12px; font-weight: 700; fill: var(--color-texto); }
-
-/* Barras horizontales: delgadas, punta redondeada, valor al final */
-.th-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.th-barra-fila { display: grid; grid-template-columns: minmax(110px, 40%) 1fr; align-items: center; gap: 12px; font-size: 13px; min-height: 26px; }
-.th-barra-etiqueta { color: var(--color-texto-medio); overflow-wrap: anywhere; line-height: 1.3; }
-.th-barra-zona { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.th-barra-valor { height: 12px; min-width: 2px; background: var(--th-serie-1); border-radius: 0 4px 4px 0; transition: width 500ms ease; }
-.th-barra-valor.cero { background: var(--th-rejilla); }
-.th-barra-cantidad { font-weight: 700; color: var(--color-texto); font-size: 13px; }
-.th-barra-cantidad.cero { color: var(--color-texto-suave); font-weight: 400; }
-
-/* Composicion: barra al 100 % por categoria + leyenda con cantidades */
-.th-comp + .th-comp { margin-top: 22px; }
-.th-comp-cabeza { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 8px; }
-.th-comp-cabeza strong { font-weight: 700; color: var(--color-texto); }
-.th-comp-cabeza span { color: var(--color-texto-suave); }
-.th-comp-barra { display: flex; gap: 2px; height: 18px; }
-.th-comp-segmento { min-width: 3px; height: 100%; transition: flex-grow 500ms ease; }
-.th-comp-segmento:last-child { border-radius: 0 4px 4px 0; }
-.th-leyenda { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
-.th-leyenda li { display: flex; align-items: center; gap: 6px; color: var(--color-texto-medio); }
-.th-leyenda i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.th-leyenda b { color: var(--color-texto); font-weight: 700; }
-
-/* Tooltip compartido */
-.th-tip {
-  position: fixed; z-index: 80; pointer-events: none; max-width: 260px;
-  background: #1e2024; color: #fff; font-size: 12px; line-height: 1.4;
-  padding: 6px 10px; border-radius: 4px; box-shadow: 0 4px 14px rgba(0, 0, 0, .2);
+@media (max-width: 560px) {
+  .th-filtros-analisis { grid-template-columns: 1fr; }
+  .th-metricas { gap: 10px; }
+  .th-metrica { padding: 14px; }
+  .th-metrica strong { font-size: 26px; }
+  .th-temas { gap: 0; }
+  .th .th-tema { padding: 10px; font-size: 12px; }
+  .th-grafico { padding: 16px; }
 }
 
 .th-filtros { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 14px; }
@@ -2593,12 +2580,10 @@ function verificarVisitante(accion, contenedor, opciones) {
   .th { padding: 20px 16px 48px; }
   .th-filtros { grid-template-columns: 1fr; }
   .th-resumen-reciente { margin-left: 0 !important; }
-  .th-detalles .th-graficos { padding: 12px; }
-  .th-barra-fila { grid-template-columns: 1fr; gap: 2px; }
   .enlace-th { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .th-ficha, .th-barra-valor, .th-comp-segmento { animation: none; transition: none; }
+  .th-ficha { animation: none; transition: none; }
 }
 @media print {
   #constanciaImpresion .th-seccion { break-inside: avoid; margin-top: 14px; border: 1px solid #999; }
@@ -2647,7 +2632,11 @@ function verificarVisitante(accion, contenedor, opciones) {
       <p class="th-resumen-reciente"><strong id="thSemana">0</strong> en los últimos 7 días</p>
     </section>
 
-    <section class="th-tarjeta" aria-labelledby="thTituloTabla">
+    <div class="th-tabs" role="tablist" aria-label="Vistas de Talento Humano">
+      <button type="button" class="th-tab" id="thTabAnalisis" role="tab" aria-selected="true" aria-controls="thVistaAnalisis">Análisis del personal</button>
+      <button type="button" class="th-tab" id="thTabRegistros" role="tab" aria-selected="false" aria-controls="thVistaRegistros" tabindex="-1">Registros</button>
+    </div>
+    <section class="th-tarjeta" id="thVistaRegistros" role="tabpanel" aria-labelledby="thTabRegistros" hidden>
       <div class="th-tabla-titulo"><h3 id="thTituloTabla">Registros del personal</h3></div>
       <div class="th-filtros" role="search">
         <div class="th-campo">
@@ -2690,28 +2679,39 @@ function verificarVisitante(accion, contenedor, opciones) {
       </div>
     </section>
 
-    <details class="th-detalles" id="thEstadisticas">
-      <summary>Estadísticas de los registros</summary>
-      <div class="th-graficos">
-        <div class="th-tarjeta th-ancho">
-          <h3>Registros por día</h3>
-          <p class="th-subtitulo" id="thSubTendencia">Últimos 14 días</p>
-          <div class="th-tendencia" id="thTendencia"></div>
-        </div>
-        <div class="th-tarjeta">
-          <h3>Distribución por género</h3>
-          <div id="thComposicion"></div>
-        </div>
-        <div class="th-tarjeta">
-          <h3>Nivel de formación más alto</h3>
-          <ul class="th-barras" id="thPorNivel"></ul>
-        </div>
-        <div class="th-tarjeta th-ancho">
-          <h3>Por unidad directiva</h3>
-          <ul class="th-barras" id="thPorUnidad"></ul>
-        </div>
+    <section id="thVistaAnalisis" role="tabpanel" aria-labelledby="thTabAnalisis">
+      <div class="th-analisis-cabecera">
+        <h3>Conozcamos a nuestro personal</h3>
+        <p>Una lectura de su formación, entorno familiar e intereses para orientar la gestión de Talento Humano y Bienestar.</p>
       </div>
-    </details>
+      <form class="th-filtros-analisis" id="thFiltrosAnalisis">
+        <div class="th-campo"><label for="thAnalisisVinculacion">Vinculación</label><select id="thAnalisisVinculacion"><option value="">Todas</option></select></div>
+        <div class="th-campo"><label for="thAnalisisUnidad">Unidad directiva</label><select id="thAnalisisUnidad"><option value="">Todas</option></select></div>
+        <button type="submit" class="btn-primario">Aplicar filtros</button>
+        <button type="button" class="btn-secundario" id="thAnalisisLimpiar">Restablecer</button>
+      </form>
+      <p class="th-estado" id="thAnalisisEstado" role="status" hidden>Preparando el análisis del personal…</p>
+      <div class="th-estado error" id="thAnalisisError" role="alert" hidden><p id="thAnalisisErrorTexto"></p><button type="button" class="btn-secundario" id="thAnalisisReintentar">Volver a intentar</button></div>
+      <div id="thAnalisisContenido" hidden>
+        <p class="th-contexto" id="thAnalisisContexto" aria-live="polite"></p>
+        <div class="th-metricas">
+          <article class="th-metrica"><p>Personas analizadas</p><strong id="thPersonasAnalizadas">0</strong><small id="thBasePersonas"></small></article>
+          <article class="th-metrica"><p>Edad promedio</p><strong id="thEdadPromedio">—</strong><small id="thBaseEdad"></small></article>
+          <article class="th-metrica"><p>Reportan tener hijos</p><strong id="thConHijos">—</strong><small id="thBaseHijos"></small></article>
+          <article class="th-metrica"><p>Practican actividad física</p><strong id="thActividadFisica">—</strong><small id="thBaseDeporte"></small></article>
+        </div>
+        <div class="th-temas" role="group" aria-label="Temas del análisis">
+          <button type="button" class="th-tema" data-th-tema="perfil" aria-pressed="true">Perfil del personal</button>
+          <button type="button" class="th-tema" data-th-tema="bienestar" aria-pressed="false">Bienestar e intereses</button>
+          <button type="button" class="th-tema" data-th-tema="familia" aria-pressed="false">Entorno familiar</button>
+        </div>
+        <section class="th-lectura" aria-labelledby="thLecturaTitulo"><h4 id="thLecturaTitulo">Lectura del perfil</h4><p id="thLecturaTexto"></p><p id="thLecturaUso"></p></section>
+        <div class="th-biblioteca" id="thErrorGraficos" role="status" hidden><p>No se pudieron cargar los gráficos. Las cantidades siguen disponibles en «Ver datos».</p><button type="button" class="btn-secundario" id="thReintentarGraficos">Reintentar gráficos</button></div>
+        <div class="th-graficos" id="thGraficos"></div>
+        <p class="th-alcance">El análisis describe los registros activos recibidos, una vez por documento. No representa a empleados que aún no han respondido. «Sin dato» y «Sin detalle registrado» se muestran cuando falta información. Los filtros de esta vista son independientes de la búsqueda de la tabla.</p>
+      </div>
+    </section>
+
   </div>
 </section>
 
@@ -2756,6 +2756,7 @@ var PanelTH = (function () {
   var filas = [], filtradas = [], pagina = 1;
   var fichaActual = null, turnoFicha = 0, botonOrigen = null;
   var cargaGoogle = null, googleListo = false;
+  var turnoDatos = 0;
 
   function el(id) { return document.getElementById(id); }
   function crear(etiqueta, clase, texto) {
@@ -2872,6 +2873,12 @@ var PanelTH = (function () {
 
   function cerrarSesion() {
     idToken = null;
+    turnoDatos++;
+    limpiarAnalisis();
+    cerrarFicha();
+    filtradas = [];
+    el('thCuerpoTabla').textContent = '';
+    vistaPanel = 'analisis';
     filas = [];
     if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
     prepararIngreso();
@@ -2881,6 +2888,8 @@ var PanelTH = (function () {
   function manejarError(e, mostrar) {
     if (/no tiene acceso/.test(e.message)) {
       idToken = null;
+      limpiarAnalisis();
+      cerrarFicha();
       prepararIngreso(filas.length
         ? 'Su sesión terminó. Ingrese de nuevo.'
         : e.message + ' Si cree que debería tenerlo, verifique que ingresó con la cuenta correcta.');
@@ -2892,8 +2901,10 @@ var PanelTH = (function () {
   /* ---------- Datos ---------- */
 
   function cargar() {
+    var turno = ++turnoDatos, credencial = idToken;
     vista('thCarga');
-    pedir('panelDatos', { idToken: idToken }).then(function (d) {
+    pedir('panelDatos', { idToken: credencial }).then(function (d) {
+      if (turno !== turnoDatos || idToken !== credencial) return;
       filas = d.filas || [];
       el('thUsuario').textContent = d.usuario;
       el('thActualizado').textContent = 'datos al ' + d.actualizado;
@@ -2902,7 +2913,9 @@ var PanelTH = (function () {
       // Primero a la vista: los graficos se dibujan con el ancho real.
       vista('thContenido');
       indicadores(d.indicadores || {});
+      cambiarVista(vistaPanel);
     }).catch(function (e) {
+      if (turno !== turnoDatos || idToken !== credencial) return;
       manejarError(e, function (m) {
         el('thTextoError').textContent = m;
         vista('thError');
@@ -2910,217 +2923,250 @@ var PanelTH = (function () {
     });
   }
 
-  /* ---------- Dashboard ---------- */
-
-  var SVG = 'http://www.w3.org/2000/svg';
-  var ultimosIndicadores = null;
-
-  /** Orden y color fijos por categoria: el color sigue a la categoria, no al puesto. */
-  var COLORES = {
-    genero: { 'Femenino': 'var(--th-serie-1)', 'Masculino': 'var(--th-serie-2)', 'No binario': 'var(--th-serie-3)',
-              'Otro': 'var(--th-serie-4)', 'Prefiero no responder': 'var(--th-serie-5)' }
-  };
-  var NIVELES = ['Bachiller', 'Técnico laboral', 'Técnico profesional', 'Tecnólogo',
-    'Profesional universitario', 'Especialización', 'Maestría', 'Doctorado', 'Posdoctorado', 'Otro'];
+  /* ---------- Análisis descriptivo con Chart.js ---------- */
+  var vistaPanel = 'analisis', temaAnalisis = 'perfil';
+  var datosAnalisis = null, cargaChart = null, graficas = [], turnoAnalisis = 0, turnoDibujo = 0;
 
   function indicadores(i) {
-    ultimosIndicadores = i;
     el('thTotal').textContent = i.total || 0;
     el('thAdministrativos').textContent = i.administrativos || 0;
     el('thDocentes').textContent = i.docentes || 0;
     el('thSemana').textContent = i.ultimaSemana || 0;
-    if (el('thEstadisticas').open) tendencia(el('thTendencia'), i.porDia || []);
-    composicion(el('thComposicion'), i);
-    barras(el('thPorNivel'), enOrden(i.porNivel || [], ordenNiveles()), false);
-    barras(el('thPorUnidad'), i.porUnidad || [], false);
   }
-
-  function ordenNiveles() {
-    var c = (window.CONFIG_PUBLICA && CONFIG_PUBLICA.catalogos) || (window.CONFIG && CONFIG && CONFIG.catalogos);
-    return (c && c.nivelesFormacion) || NIVELES;
+  function destruirGraficas() {
+    turnoDibujo++;
+    graficas.forEach(function (g) { g.destroy(); });
+    graficas = [];
   }
-
-  /** Todas las categorias del orden dado (con cero si no hay), mas las que no esten en el. */
-  function enOrden(datos, orden) {
-    var cuenta = {};
-    datos.forEach(function (d) { cuenta[d.etiqueta] = d.cantidad; });
-    var lista = orden.map(function (e) { return { etiqueta: e, cantidad: cuenta[e] || 0 }; });
-    datos.forEach(function (d) { if (orden.indexOf(d.etiqueta) === -1) lista.push(d); });
-    return lista;
+  function limpiarAnalisis() {
+    turnoAnalisis++;
+    destruirGraficas();
+    datosAnalisis = null;
+    el('thGraficos').textContent = '';
+    el('thAnalisisContenido').hidden = true;
+    el('thAnalisisEstado').hidden = true;
+    el('thAnalisisError').hidden = true;
   }
-
-  function porcentaje(n, total) {
-    if (!total) return '0 %';
-    var p = n / total * 100;
-    return (p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1).replace('.', ',')) + ' %';
+  function cambiarVista(nombre) {
+    vistaPanel = nombre;
+    ['Registros', 'Analisis'].forEach(function (n) {
+      var seleccionada = nombre === n.toLowerCase();
+      el('thVista' + n).hidden = !seleccionada;
+      el('thTab' + n).setAttribute('aria-selected', String(seleccionada));
+      el('thTab' + n).tabIndex = seleccionada ? 0 : -1;
+    });
+    if (nombre === 'analisis') {
+      if (datosAnalisis) pintarAnalisis(); else cargarAnalisis();
+    }
   }
-  function registros(n) { return n + (n === 1 ? ' registro' : ' registros'); }
-
-  /* Tooltip: uno solo para todo el panel */
-  var tip = null;
-  function mostrarTip(texto, x, y) {
-    if (!tip) { tip = crear('div', 'th-tip'); tip.setAttribute('role', 'presentation'); document.body.appendChild(tip); }
-    tip.textContent = texto;
-    tip.hidden = false;
-    var ancho = tip.offsetWidth, alto = tip.offsetHeight;
-    var izq = Math.min(Math.max(8, x - ancho / 2), window.innerWidth - ancho - 8);
-    var arriba = y - alto - 12 < 8 ? y + 16 : y - alto - 12;
-    tip.style.left = izq + 'px';
-    tip.style.top = arriba + 'px';
-  }
-  function ocultarTip() { if (tip) tip.hidden = true; }
-  function conTip(nodo, texto) {
-    nodo.addEventListener('mousemove', function (e) { mostrarTip(texto, e.clientX, e.clientY); });
-    nodo.addEventListener('mouseleave', ocultarTip);
-  }
-
-  /** Barras horizontales delgadas, valor al final de cada barra. */
-  function barras(lista, datos, mostrarCeros) {
-    lista.textContent = '';
-    var total = datos.reduce(function (s, d) { return s + d.cantidad; }, 0);
-    if (!total) { lista.appendChild(crear('li', 'th-vacio', 'Aún no hay registros.')); return; }
-    var max = datos.reduce(function (m, d) { return Math.max(m, d.cantidad); }, 1);
-    datos.forEach(function (d) {
-      if (!d.cantidad && !mostrarCeros) return;
-      var li = crear('li', 'th-barra-fila');
-      li.appendChild(crear('span', 'th-barra-etiqueta', d.etiqueta));
-      var zona = crear('span', 'th-barra-zona');
-      var barra = crear('span', 'th-barra-valor' + (d.cantidad ? '' : ' cero'));
-      // El 100 % se reserva para la mas larga, dejando aire para el numero.
-      barra.style.width = d.cantidad ? 'calc((100% - 44px) * ' + (d.cantidad / max).toFixed(4) + ')' : '2px';
-      zona.appendChild(barra);
-      zona.appendChild(crear('span', 'th-barra-cantidad' + (d.cantidad ? '' : ' cero'), String(d.cantidad)));
-      li.appendChild(zona);
-      conTip(li, d.etiqueta + ': ' + registros(d.cantidad) + ' (' + porcentaje(d.cantidad, total) + ')');
-      lista.appendChild(li);
+  function cargarAnalisis() {
+    if (!idToken) return;
+    var turno = ++turnoAnalisis, credencial = idToken;
+    destruirGraficas();
+    el('thAnalisisEstado').hidden = false;
+    el('thAnalisisError').hidden = true;
+    el('thAnalisisContenido').hidden = true;
+    el('thVistaAnalisis').setAttribute('aria-busy', 'true');
+    pedir('panelAnalisis', { idToken: credencial, filtros: {
+      vinculacion: el('thAnalisisVinculacion').value, unidad: el('thAnalisisUnidad').value
+    } }).then(function (d) {
+      if (turno !== turnoAnalisis || idToken !== credencial) return;
+      datosAnalisis = d;
+      llenarSelect(el('thAnalisisVinculacion'), d.opciones.vinculaciones);
+      llenarSelect(el('thAnalisisUnidad'), d.opciones.unidades);
+      el('thAnalisisEstado').hidden = true;
+      el('thVistaAnalisis').setAttribute('aria-busy', 'false');
+      pintarAnalisis();
+    }).catch(function (e) {
+      if (turno !== turnoAnalisis || idToken !== credencial) return;
+      el('thAnalisisEstado').hidden = true;
+      el('thVistaAnalisis').setAttribute('aria-busy', 'false');
+      manejarError(e, function (m) {
+        el('thAnalisisErrorTexto').textContent = m;
+        el('thAnalisisError').hidden = false;
+      });
     });
   }
-
-  /** Distribucion por genero; la vinculacion ya aparece en el resumen. */
-  function composicion(cont, i) {
+  function porcentaje(n, base) { return base ? (Math.round(n / base * 1000) / 10).toLocaleString('es-CO') + ' %' : '—'; }
+  function cifra(n) { return Number(n || 0).toLocaleString('es-CO'); }
+  function principal(lista) {
+    return (lista || []).filter(function (d) { return !/^Sin /i.test(d.etiqueta); })
+      .sort(function (a, b) { return b.cantidad - a.cantidad || a.etiqueta.localeCompare(b.etiqueta, 'es'); })[0];
+  }
+  function pintarAnalisis() {
+    var d = datosAnalisis;
+    if (!d) return;
+    el('thAnalisisContenido').hidden = false;
+    el('thAnalisisContexto').textContent = cifra(d.total) + ' de ' + cifra(d.universo) + ' personas con registro activo · ' +
+      (d.filtros.vinculacion || 'Todas las vinculaciones') + ' · ' + (d.filtros.unidad || 'Todas las unidades') + ' · Datos al ' + d.actualizado;
+    el('thPersonasAnalizadas').textContent = cifra(d.total);
+    el('thBasePersonas').textContent = 'Según los filtros del análisis';
+    el('thEdadPromedio').textContent = d.edadPromedio === null ? '—' : d.edadPromedio.toLocaleString('es-CO') + ' años';
+    el('thBaseEdad').textContent = cifra(d.edadesValidas) + ' personas con edad válida';
+    el('thConHijos').textContent = porcentaje(d.conHijos, d.total);
+    el('thBaseHijos').textContent = cifra(d.conHijos) + ' de ' + cifra(d.total) + ' personas analizadas';
+    el('thActividadFisica').textContent = porcentaje(d.deporteSi, d.total);
+    el('thBaseDeporte').textContent = cifra(d.deporteSi) + ' de ' + cifra(d.total) + ' personas analizadas';
+    var texto, uso, titulo;
+    if (!d.total) {
+      titulo = 'No hay registros para esta selección';
+      texto = 'Cambie o restablezca los filtros para analizar otros registros.';
+      uso = 'No se calculan porcentajes ni promedios cuando no hay personas en la selección.';
+    } else if (temaAnalisis === 'perfil') {
+      titulo = 'Lectura del perfil';
+      var nivel = principal(d.nivel), ciudad = principal(d.ciudad);
+      texto = 'Se describen ' + cifra(d.total) + ' personas.';
+      if (nivel) texto += ' El nivel de formación declarado más frecuente es ' + nivel.etiqueta + ': ' + cifra(nivel.cantidad) + ' personas (' + porcentaje(nivel.cantidad, d.total) + ').';
+      if (ciudad) texto += ' La residencia más reportada es ' + ciudad.etiqueta + ', con ' + cifra(ciudad.cantidad) + ' personas (' + porcentaje(ciudad.cantidad, d.total) + ').';
+      uso = 'Esta composición permite orientar programas de cualificación y actividades según las etapas de vida y la ubicación del personal que respondió.';
+    } else if (temaAnalisis === 'bienestar') {
+      titulo = 'Lectura de bienestar e intereses';
+      texto = cifra(d.deporteSi) + ' personas (' + porcentaje(d.deporteSi, d.total) + ') declaran practicar actividad física y ' + cifra(d.culturaSi) + ' (' + porcentaje(d.culturaSi, d.total) + ') actividades culturales o artísticas. ' +
+        cifra(d.interesados) + ' manifiestan interés en actividades institucionales y ' + cifra(d.talVez) + ' responden «Tal vez».';
+      var frecuencia = principal(d.frecuencia);
+      if (frecuencia) texto += ' Entre quienes practican deporte, la frecuencia más reportada es «' + frecuencia.etiqueta + '» (' + cifra(frecuencia.cantidad) + ' personas).';
+      uso = 'Las preferencias permiten priorizar la oferta de Bienestar. Una persona puede marcar varias opciones: los porcentajes de estos gráficos pueden sumar más de 100 %.';
+    } else {
+      titulo = 'Lectura del entorno familiar';
+      texto = cifra(d.conHijos) + ' personas (' + porcentaje(d.conHijos, d.total) + ') reportan tener hijos. ' +
+        (d.familiasConCantidad ? 'Se registran ' + cifra(d.hijosRegistrados) + ' hijos en ' + cifra(d.familiasConCantidad) + ' respuestas con cantidad informada.' : 'No hay cantidades de hijos informadas en esta selección.');
+      uso = 'Estos datos ayudan a dimensionar actividades familiares. Se distinguen las personas con hijos de la cantidad de hijos; las respuestas sin cantidad permanecen visibles.';
+    }
+    el('thLecturaTitulo').textContent = titulo;
+    el('thLecturaTexto').textContent = texto;
+    el('thLecturaUso').textContent = uso;
+    document.querySelectorAll('[data-th-tema]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.thTema === temaAnalisis));
+    });
+    if (vistaPanel === 'analisis') dibujarGraficos();
+  }
+  function cargarChart() {
+    if (window.Chart) return Promise.resolve(window.Chart);
+    if (cargaChart) return cargaChart;
+    cargaChart = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      var espera = setTimeout(function () { s.remove(); reject(new Error('Tiempo de carga agotado.')); }, 15000);
+      s.src = new URL('vendor/chartjs-4.5.1.umd.min.js', document.baseURI).href;
+      s.async = true;
+      s.onload = function () { clearTimeout(espera); window.Chart ? resolve(window.Chart) : reject(new Error('Biblioteca no disponible.')); };
+      s.onerror = function () { clearTimeout(espera); s.remove(); reject(new Error('No se pudo cargar Chart.js.')); };
+      document.head.appendChild(s);
+    }).catch(function (e) { cargaChart = null; throw e; });
+    return cargaChart;
+  }
+  function ordenados(lista, orden) {
+    return lista.slice().sort(function (a, b) {
+      var x = orden.indexOf(a.etiqueta), y = orden.indexOf(b.etiqueta);
+      return (x < 0 ? 999 : x) - (y < 0 ? 999 : y);
+    });
+  }
+  function partirEtiqueta(texto) {
+    var lineas = [], linea = '';
+    texto.split(' ').forEach(function (palabra) {
+      if ((linea + ' ' + palabra).length > 26 && linea) { lineas.push(linea); linea = palabra; }
+      else linea += (linea ? ' ' : '') + palabra;
+    });
+    if (linea) lineas.push(linea);
+    return lineas;
+  }
+  function dibujarGraficos() {
+    destruirGraficas();
+    var turno = turnoDibujo, credencial = idToken, d = datosAnalisis;
+    var cont = el('thGraficos');
     cont.textContent = '';
-    if (!i.total) { cont.appendChild(crear('p', 'th-vacio', 'Aún no hay registros.')); return; }
-    [['Género', i.porGenero || [], COLORES.genero]].forEach(function (g) {
-      var orden = Object.keys(g[2]);
-      var datos = enOrden(g[1], orden).filter(function (d) { return d.cantidad > 0; });
-      var total = datos.reduce(function (s, d) { return s + d.cantidad; }, 0);
-      var bloque = crear('div', 'th-comp');
-      var cabeza = crear('div', 'th-comp-cabeza');
-      cabeza.appendChild(crear('span', null, registros(total)));
-      bloque.appendChild(cabeza);
-
-      var barra = crear('div', 'th-comp-barra');
-      barra.setAttribute('role', 'img');
-      barra.setAttribute('aria-label', g[0] + ': ' + datos.map(function (d) {
-        return d.etiqueta + ' ' + d.cantidad + ' (' + porcentaje(d.cantidad, total) + ')';
-      }).join(', '));
-      var leyenda = crear('ul', 'th-leyenda');
-      datos.forEach(function (d) {
-        var color = g[2][d.etiqueta] || 'var(--th-sin-dato)';
-        var seg = crear('span', 'th-comp-segmento');
-        seg.style.flexGrow = d.cantidad;
-        seg.style.background = color;
-        conTip(seg, d.etiqueta + ': ' + registros(d.cantidad) + ' (' + porcentaje(d.cantidad, total) + ')');
-        barra.appendChild(seg);
-        var li = crear('li');
-        var punto = crear('i');
-        punto.style.background = color;
-        li.appendChild(punto);
-        li.appendChild(crear('span', null, d.etiqueta));
-        li.appendChild(crear('b', null, d.cantidad + ' · ' + porcentaje(d.cantidad, total)));
-        leyenda.appendChild(li);
+    el('thErrorGraficos').hidden = true;
+    var definiciones;
+    if (temaAnalisis === 'perfil') {
+      definiciones = [
+        ['Formación académica', ordenados(d.nivel, CONFIG_PUBLICA_SEGURA().nivelesFormacion), d.total, 'Máximo nivel declarado por las personas de la selección.'],
+        ['Etapas de vida', ordenados(d.edad, ['18–24 años','25–34 años','35–44 años','45–54 años','55 años o más','Sin dato']), d.total, 'Edad calculada desde el nacimiento; se usa la edad registrada si no hay fecha.', true],
+        ['Distribución por género', d.genero, d.total, 'Categorías declaradas por las personas que respondieron.'],
+        ['Lugar de residencia', d.ciudad, d.total, 'Ciudad registrada. Permite reconocer la concentración geográfica.']
+      ];
+    } else if (temaAnalisis === 'bienestar') {
+      definiciones = [
+        ['Deportes y actividad física', d.deportes, d.deporteSi, 'Selección múltiple. Base: personas que declaran practicar actividad física.'],
+        ['Prácticas culturales y artísticas', d.actividadesCulturales, d.culturaSi, 'Selección múltiple. Base: personas que declaran práctica cultural o artística.'],
+        ['Intereses institucionales', d.actividadesInteres, d.interesados + d.talVez, 'Selección múltiple. Base: personas que responden Sí o Tal vez a participar.'],
+        ['Pasatiempos del personal', d.pasatiempos, d.total, 'Selección múltiple y opcional. Los textos libres se agrupan en Otras actividades.']
+      ];
+    } else {
+      definiciones = [
+        ['Hijos por persona', ordenados(d.familia, ['Sin hijos','1 hijo','2 hijos','3 hijos o más','Con hijos, sin cantidad','Sin dato']), d.total, 'Cuenta personas por situación familiar; cada persona aparece una vez.'],
+        ['Estado civil', d.estadoCivil, d.total, 'Estado civil declarado por las personas de la selección.']
+      ];
+    }
+    var pendientes = [];
+    definiciones.forEach(function (def, indice) {
+      var tarjeta = crear('article', 'th-tarjeta th-grafico');
+      tarjeta.appendChild(crear('h3', null, def[0]));
+      tarjeta.appendChild(crear('p', 'th-base', def[3] + ' Base: ' + cifra(def[2]) + ' personas.'));
+      if (!def[1].length || !d.total) tarjeta.appendChild(crear('p', 'th-vacio', 'No hay datos para este gráfico.'));
+      else {
+        var zona = crear('div', 'th-lienzo');
+        zona.style.height = (def[4] ? 270 : Math.max(245, def[1].length * 35 + 22)) + 'px';
+        var canvas = crear('canvas');
+        canvas.id = 'thChart-' + indice;
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', def[0] + ': ' + def[1].map(function (x) { return x.etiqueta + ', ' + x.cantidad + ' personas'; }).join('; '));
+        zona.appendChild(canvas); tarjeta.appendChild(zona);
+        pendientes.push({ canvas: canvas, def: def });
+        var detalle = crear('details', 'th-valores');
+        detalle.appendChild(crear('summary', null, 'Ver datos'));
+        var lista = crear('dl');
+        def[1].forEach(function (x) {
+          var fila = crear('div', 'th-valor');
+          fila.appendChild(crear('dt', null, x.etiqueta));
+          fila.appendChild(crear('dd', null, cifra(x.cantidad) + ' · ' + porcentaje(x.cantidad, def[2])));
+          lista.appendChild(fila);
+        });
+        detalle.appendChild(lista); tarjeta.appendChild(detalle);
+      }
+      cont.appendChild(tarjeta);
+    });
+    if (!pendientes.length) return;
+    cargarChart().then(function (Chart) {
+      if (turno !== turnoDibujo || idToken !== credencial || vistaPanel !== 'analisis' || !activo) return;
+      pendientes.forEach(function (p) {
+        var def = p.def, vertical = !!def[4];
+        graficas.push(new Chart(p.canvas, {
+          type: 'bar',
+          data: { labels: def[1].map(function (x) { return partirEtiqueta(x.etiqueta); }), datasets: [{
+            data: def[1].map(function (x) { return x.cantidad; }),
+            backgroundColor: def[1].map(function (x) { return /^Sin /i.test(x.etiqueta) || /sin cantidad/i.test(x.etiqueta) ? '#c5cbd3' : '#244b70'; }),
+            borderRadius: 4, maxBarThickness: 28
+          }] },
+          options: {
+            indexAxis: vertical ? 'x' : 'y', responsive: true, maintainAspectRatio: false,
+            animation: false, locale: 'es-CO', layout: { padding: { right: vertical ? 8 : 32, top: 18 } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: {
+              title: function (items) { return items.length ? def[1][items[0].dataIndex].etiqueta : ''; },
+              label: function (item) { var n = def[1][item.dataIndex].cantidad; return cifra(n) + ' personas · ' + porcentaje(n, def[2]); }
+            } } },
+            scales: {
+              x: { beginAtZero: true, grid: { display: !vertical, color: '#eef1f5' }, border: { display: false }, ticks: { precision: 0, color: '#64748b', font: { size: 11 } } },
+              y: { beginAtZero: true, grid: { display: vertical, color: '#eef1f5' }, border: { display: false }, ticks: { precision: 0, color: '#34475b', font: { size: 11 } } }
+            }
+          },
+          plugins: [{ id: 'thCantidades', afterDatasetsDraw: function (chart) {
+            var ctx = chart.ctx; ctx.save(); ctx.fillStyle = '#102a43'; ctx.font = '600 11px Arial';
+            chart.getDatasetMeta(0).data.forEach(function (barra, i) {
+              ctx.textAlign = vertical ? 'center' : 'left';
+              ctx.fillText(cifra(def[1][i].cantidad), vertical ? barra.x : barra.x + 6, vertical ? barra.y - 7 : barra.y + 4);
+            }); ctx.restore();
+          } }]
+        }));
       });
-      bloque.appendChild(barra);
-      bloque.appendChild(leyenda);
-      cont.appendChild(bloque);
+    }).catch(function () {
+      if (turno === turnoDibujo && idToken === credencial) el('thErrorGraficos').hidden = false;
     });
   }
-
-  function svg(etiqueta, atributos, padre) {
-    var n = document.createElementNS(SVG, etiqueta);
-    Object.keys(atributos || {}).forEach(function (k) { n.setAttribute(k, atributos[k]); });
-    if (padre) padre.appendChild(n);
-    return n;
+  function CONFIG_PUBLICA_SEGURA() {
+    return (window.CONFIG_PUBLICA && window.CONFIG_PUBLICA.catalogos) || (window.CONFIG && window.CONFIG.catalogos) || {
+      nivelesFormacion: ['Bachiller', 'Técnico laboral', 'Técnico profesional', 'Tecnólogo',
+        'Profesional universitario', 'Especialización', 'Maestría', 'Doctorado', 'Posdoctorado', 'Otro']
+    };
   }
-
-  /** Tope "redondo" del eje: 4, 5, 10, 20, 25, 50… para marcas limpias. */
-  function topeEje(max) {
-    if (max <= 4) return 4;
-    var p = Math.pow(10, Math.floor(Math.log10(max)));
-    var pasos = [1, 2, 2.5, 5, 10];
-    for (var k = 0; k < pasos.length; k++) if (pasos[k] * p >= max) return pasos[k] * p;
-    return 10 * p;
-  }
-
-  /** Linea con area: registros por dia. Pasar el mouse muestra el dia. */
-  function tendencia(cont, dias) {
-    cont.textContent = '';
-    var total = dias.reduce(function (s, d) { return s + d.cantidad; }, 0);
-    el('thSubTendencia').textContent = 'Últimos ' + dias.length + ' días · ' + registros(total);
-    if (!dias.length) return;
-
-    var ancho = Math.max(280, cont.clientWidth || 600), alto = 200;
-    var m = { arriba: 18, derecha: 36, abajo: 28, izquierda: 32 };
-    var w = ancho - m.izquierda - m.derecha, h = alto - m.arriba - m.abajo;
-    var tope = topeEje(dias.reduce(function (x, d) { return Math.max(x, d.cantidad); }, 0));
-    var x = function (i) { return m.izquierda + (dias.length === 1 ? w / 2 : i * w / (dias.length - 1)); };
-    var y = function (v) { return m.arriba + h - v / tope * h; };
-
-    var raiz = svg('svg', { viewBox: '0 0 ' + ancho + ' ' + alto, height: alto, role: 'img',
-      'aria-label': 'Registros por día en los últimos ' + dias.length + ' días: ' + registros(total) +
-        '; hoy ' + dias[dias.length - 1].cantidad + '.' });
-
-    // Rejilla y eje: lineas finas y discretas
-    [0, tope / 2, tope].forEach(function (v) {
-      svg('line', { x1: m.izquierda, x2: m.izquierda + w, y1: y(v), y2: y(v), stroke: 'var(--th-rejilla)', 'stroke-width': 1 }, raiz);
-      var t = svg('text', { x: m.izquierda - 8, y: y(v) + 4, 'text-anchor': 'end' }, raiz);
-      t.textContent = String(Math.round(v * 10) / 10).replace('.', ',');
-    });
-    var cada = Math.max(1, Math.ceil(dias.length / Math.max(2, Math.floor(w / 64))));
-    dias.forEach(function (d, i) {
-      if (i % cada && i !== dias.length - 1) return;
-      var t = svg('text', { x: x(i), y: alto - 8, 'text-anchor': 'middle' }, raiz);
-      t.textContent = i === dias.length - 1 ? 'Hoy' : d.etiqueta;
-    });
-
-    var puntos = dias.map(function (d, i) { return x(i) + ',' + y(d.cantidad); });
-    svg('path', { d: 'M' + x(0) + ',' + y(0) + ' L' + puntos.join(' L') + ' L' + x(dias.length - 1) + ',' + y(0) + ' Z',
-      fill: 'var(--th-area)', stroke: 'none' }, raiz);
-    svg('path', { d: 'M' + puntos.join(' L'), fill: 'none', stroke: 'var(--th-serie-1)', 'stroke-width': 2,
-      'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, raiz);
-
-    // Etiqueta directa solo en el ultimo punto (hoy)
-    var ultimo = dias.length - 1;
-    svg('circle', { cx: x(ultimo), cy: y(dias[ultimo].cantidad), r: 4, fill: 'var(--th-serie-1)',
-      stroke: '#fff', 'stroke-width': 2 }, raiz);
-    var valor = svg('text', { x: x(ultimo) + 8, y: y(dias[ultimo].cantidad) + 4, 'class': 'th-etiqueta-valor' }, raiz);
-    valor.textContent = String(dias[ultimo].cantidad);
-
-    // Capa de interaccion: guia vertical + punto del dia bajo el mouse
-    var guia = svg('line', { y1: m.arriba, y2: m.arriba + h, stroke: '#9aa0a8', 'stroke-width': 1, visibility: 'hidden' }, raiz);
-    var marca = svg('circle', { r: 5, fill: 'var(--th-serie-1)', stroke: '#fff', 'stroke-width': 2, visibility: 'hidden' }, raiz);
-    var paso = dias.length > 1 ? w / (dias.length - 1) : w;
-    dias.forEach(function (d, i) {
-      var zona = svg('rect', { x: x(i) - paso / 2, y: m.arriba, width: paso, height: h, fill: 'transparent' }, raiz);
-      zona.addEventListener('mousemove', function (e) {
-        guia.setAttribute('x1', x(i)); guia.setAttribute('x2', x(i)); guia.setAttribute('visibility', 'visible');
-        marca.setAttribute('cx', x(i)); marca.setAttribute('cy', y(d.cantidad)); marca.setAttribute('visibility', 'visible');
-        mostrarTip((i === ultimo ? 'Hoy (' + d.etiqueta + ')' : d.etiqueta) + ': ' + registros(d.cantidad), e.clientX, e.clientY);
-      });
-      zona.addEventListener('mouseleave', function () {
-        guia.setAttribute('visibility', 'hidden'); marca.setAttribute('visibility', 'hidden'); ocultarTip();
-      });
-    });
-    cont.appendChild(raiz);
-  }
-
-  /** La tendencia se mide con el ancho real: se redibuja al cambiar el tamano. */
-  var esperaRedibujo = null;
-  window.addEventListener('resize', function () {
-    if (!activo || !ultimosIndicadores || !el('thEstadisticas').open) return;
-    clearTimeout(esperaRedibujo);
-    esperaRedibujo = setTimeout(function () { tendencia(el('thTendencia'), ultimosIndicadores.porDia || []); }, 150);
-  });
 
   /* ---------- Tabla y filtros ---------- */
 
@@ -3249,7 +3295,6 @@ var PanelTH = (function () {
     fichaActual = null;
     el('thFondoFicha').hidden = true;
     document.documentElement.style.overflow = '';
-    ocultarTip();
     if (botonOrigen && document.body.contains(botonOrigen)) botonOrigen.focus();
   }
 
@@ -3328,9 +3373,23 @@ var PanelTH = (function () {
     el('thIrFormulario').addEventListener('click', irAlFormulario);
     el('thSalir').addEventListener('click', cerrarSesion);
     el('thReintentar').addEventListener('click', cargar);
-    el('thEstadisticas').addEventListener('toggle', function () {
-      if (this.open && ultimosIndicadores) tendencia(el('thTendencia'), ultimosIndicadores.porDia || []);
-      ocultarTip();
+    ['Analisis', 'Registros'].forEach(function (n) {
+      el('thTab' + n).addEventListener('click', function () { cambiarVista(n.toLowerCase()); });
+      el('thTab' + n).addEventListener('keydown', function (e) {
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) === -1) return;
+        e.preventDefault();
+        var siguiente = e.key === 'Home' ? 'Analisis' : e.key === 'End' ? 'Registros' : n === 'Analisis' ? 'Registros' : 'Analisis';
+        cambiarVista(siguiente.toLowerCase()); el('thTab' + siguiente).focus();
+      });
+    });
+    el('thFiltrosAnalisis').addEventListener('submit', function (e) { e.preventDefault(); cargarAnalisis(); });
+    el('thAnalisisLimpiar').addEventListener('click', function () {
+      el('thAnalisisUnidad').value = ''; el('thAnalisisVinculacion').value = ''; cargarAnalisis();
+    });
+    el('thAnalisisReintentar').addEventListener('click', cargarAnalisis);
+    el('thReintentarGraficos').addEventListener('click', dibujarGraficos);
+    document.querySelectorAll('[data-th-tema]').forEach(function (b) {
+      b.addEventListener('click', function () { temaAnalisis = b.dataset.thTema; pintarAnalisis(); });
     });
     el('thBuscar').addEventListener('input', aplicarFiltros);
     el('thFiltroVinculacion').addEventListener('change', aplicarFiltros);
