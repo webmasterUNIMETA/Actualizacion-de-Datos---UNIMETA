@@ -1605,10 +1605,10 @@ body.modal-abierto { overflow: hidden; }
 
     <div class="campo" id="campo-fondoCesantias">
       <label for="fondoCesantias">Fondo de cesantías<span class="obligatorio">*</span></label>
-      <select id="fondoCesantias" data-catalogo="fondosCesantias">
-        <option value="">Seleccione...</option>
-      </select>
-      <p class="mensaje-error" id="error-fondoCesantias">Seleccione el fondo de cesantías.</p>
+      <input id="fondoCesantias" type="text" maxlength="150" list="listaFondosCesantias" autocomplete="off"
+             placeholder="Escriba el nombre de su fondo" aria-describedby="ayuda-fondoCesantias">
+      <p class="ayuda" id="ayuda-fondoCesantias">Si su fondo no aparece, escriba el nombre completo.</p>
+      <p class="mensaje-error" id="error-fondoCesantias">Indique el fondo de cesantías.</p>
     </div>
 
     <div class="campo condicional" id="cond-otroFondo">
@@ -1874,6 +1874,7 @@ body.modal-abierto { overflow: hidden; }
 
 <datalist id="listaCiudades"></datalist>
 <datalist id="listaInstituciones"></datalist>
+<datalist id="listaFondosCesantias" data-catalogo="fondosCesantias"></datalist>
 <!-- Sugerencias de EPS con presencia local documentada en 2026. Ver FUENTES_EPS.md. -->
 <datalist id="listaEps">
   <option value="Capital Salud"></option>
@@ -3684,8 +3685,8 @@ function pintarTextos() {
    ------------------------------------------------------------ */
 
 function poblarCatalogos() {
-  // Listas desplegables
-  $$('select[data-catalogo]').forEach(function (sel) {
+  // Listas desplegables y sugerencias para campos de texto.
+  $$('select[data-catalogo], datalist[data-catalogo]').forEach(function (sel) {
     var lista = CONFIG.catalogos[sel.getAttribute('data-catalogo')] || [];
     lista.forEach(function (v) {
       var o = crear('option', null, v);
@@ -4131,9 +4132,11 @@ function conectarEventos() {
       marcadoUnico('tieneLibretaMilitar') === 'Si');
   });
 
-  $('fondoCesantias').addEventListener('change', function () {
-    mostrar($('cond-otroFondo'), valorDe('fondoCesantias') === 'Otro');
-  });
+  function actualizarOtroFondo() {
+    mostrar($('cond-otroFondo'), normalizarOpcion(valorDe('fondoCesantias')) === 'otro');
+  }
+  $('fondoCesantias').addEventListener('input', actualizarOtroFondo);
+  $('fondoCesantias').addEventListener('change', actualizarOtroFondo);
 
   $('arl').addEventListener('change', function () {
     mostrar($('cond-otraArl'), valorDe('arl') === 'Otra');
@@ -5055,7 +5058,7 @@ function conectarValidaciones() {
   conectarValidacion($('tipoVinculacion'), vSeleccion('su tipo de vinculación'));
   conectarValidacion($('tipoDocumento'), vSeleccion('el tipo de documento'));
   conectarValidacion($('estadoCivil'), vSeleccion('su estado civil'));
-  conectarValidacion($('fondoCesantias'), vSeleccion('el fondo de cesantías'));
+  conectarValidacion($('fondoCesantias'), vTexto('el fondo de cesantías'));
   conectarValidacion($('arl'), vSeleccion('la ARL'));
   conectarValidacion($('frecuenciaDeporte'), vSeleccion('la frecuencia'));
   conectarValidacion($('nivelFormacionMaximo'), vSeleccion('su nivel de formación'));
@@ -5297,7 +5300,7 @@ function validarPaso(n) {
     ok = obligatorio('eps') && ok;
     ok = obligatorio('fondoPensiones') && ok;
     ok = obligatorio('fondoCesantias') && ok;
-    if (valorDe('fondoCesantias') === 'Otro') {
+    if (normalizarOpcion(valorDe('fondoCesantias')) === 'otro') {
       ok = obligatorio('otroFondoCesantias', 'Especifique el fondo.') && ok;
     }
     ok = obligatorio('arl', 'Seleccione la ARL.') && ok;
@@ -5381,9 +5384,23 @@ function listaDeportes() {
    RECOLECCION
    ------------------------------------------------------------ */
 
+// Conserva el catálogo y los dos campos que ya espera el servidor.
+function datosFondoCesantias() {
+  var escrito = valorDe('fondoCesantias');
+  var opcion = normalizarOpcion(escrito);
+  var catalogo = CONFIG.catalogos.fondosCesantias || [];
+  var conocido = catalogo.find(function (nombre) {
+    return normalizarOpcion(nombre) === opcion;
+  });
+  if (!escrito) return { fondo: '', otro: '' };
+  if (conocido && conocido !== 'Otro') return { fondo: conocido, otro: '' };
+  return { fondo: 'Otro', otro: opcion === 'otro' ? valorDe('otroFondoCesantias') : escrito };
+}
+
 function recolectar() {
   var unidad = valorDe('unidadDirectiva');
   var esOtra = unidad === OPCION_OTRA_UNIDAD;
+  var fondo = datosFondoCesantias();
 
   return {
     // Lo entrega el servidor al abrir la pagina; sin el no acepta el envio.
@@ -5444,8 +5461,8 @@ function recolectar() {
 
     eps: valorDe('eps'),
     fondoPensiones: valorDe('fondoPensiones'),
-    fondoCesantias: valorDe('fondoCesantias'),
-    otroFondoCesantias: valorDe('otroFondoCesantias'),
+    fondoCesantias: fondo.fondo,
+    otroFondoCesantias: fondo.otro,
     arl: valorDe('arl'),
     otraArl: valorDe('otraArl'),
 
