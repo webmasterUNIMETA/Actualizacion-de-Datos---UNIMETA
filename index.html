@@ -3295,7 +3295,7 @@ var PanelTH = (function () {
     var url = URL.createObjectURL(archivo);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'registro-unimeta-' + datos.radicado.replace(/[^A-Za-z0-9-]/g, '') + '.pdf';
+    a.download = nombreArchivoRegistro(fichaActual);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -5831,6 +5831,8 @@ function imprimirRegistro() {
 
 function datosConstanciaPdf() {
   return {
+    nombre: (valorDe('nombres') + ' ' + valorDe('apellidos')).trim(),
+    documento: valorDe('numDocumento'),
     radicado: $('numeroRadicado').textContent,
     fecha: $('fechaRecepcion').textContent,
     correo: $('correoRegistrado').textContent,
@@ -5846,13 +5848,33 @@ function datosConstanciaPdf() {
   };
 }
 
+/** Nomenclatura compartida por el formulario y Talento Humano. */
+function nombreArchivoRegistro(datos) {
+  var campos = [];
+  (datos.secciones || []).forEach(function (seccion) {
+    campos = campos.concat(seccion.filas || []);
+  });
+  function campo(etiqueta) {
+    var fila = campos.find(function (f) { return normalizarOpcion(f[0]) === normalizarOpcion(etiqueta); });
+    return fila ? String(fila[1] || '') : '';
+  }
+  var nombre = datos.nombre || campo('Nombre completo') ||
+    [campo('Nombres'), campo('Apellidos')].filter(Boolean).join(' ');
+  var documento = datos.documento || campo('Número de documento');
+  // Conserva tildes y ñ; elimina caracteres que no admite un nombre de archivo.
+  nombre = String(nombre || 'Registro').replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ').trim().slice(0, 90).replace(/^[. ]+|[. ]+$/g, '') || 'Registro';
+  documento = String(documento || datos.radicado || 'sin-identificacion').replace(/[^A-Za-z0-9-]/g, '').slice(0, 30);
+  return nombre + ' - ' + documento + '.pdf';
+}
+
 function descargarPdfRegistro() {
   var datos = datosConstanciaPdf();
   var archivo = new Blob([generarPdfRegistro(datos)], { type: 'application/pdf' });
   var direccion = URL.createObjectURL(archivo);
   var enlace = document.createElement('a');
   enlace.href = direccion;
-  enlace.download = 'registro-unimeta-' + datos.radicado.replace(/[^A-Za-z0-9-]/g, '') + '.pdf';
+  enlace.download = nombreArchivoRegistro(datos);
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
