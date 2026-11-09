@@ -2305,6 +2305,215 @@ function generarPdfRegistro(datos) {
 </script>
 
 <script>
+/* ============================================================
+   Descarga en Excel (.xlsx) del panel de Talento Humano.
+
+   Se arma aqui mismo, sin bibliotecas ni servicios externos, igual que el
+   PDF de Pdf.html: los datos de las personas no salen del navegador.
+
+   Un .xlsx es un ZIP con unos pocos XML. Se guarda sin comprimir (metodo
+   STORE), que Excel, LibreOffice y Google Sheets abren sin problema. Todas
+   las celdas van como texto (inlineStr): un valor que empiece por "=" nunca
+   se vuelve formula, los documentos conservan los ceros iniciales y los
+   saltos de linea de Hijos o Formacion se ven en la celda.
+   ============================================================ */
+
+/**
+ * Cabecera de cada XML del archivo. Se escribe en dos partes a proposito:
+ * construir-sitio.mjs rechaza la pagina si encuentra el inicio de una
+ * etiqueta de plantilla ("<" seguido de "?"), y esta cabecera lo parece.
+ */
+var DECLARACION_XML_XLSX = '<' + '?xml version="1.0" encoding="UTF-8" standalone="yes"?' + '>';
+
+/**
+ * @param {string} nombreHoja  Nombre de la pestana (maximo 31 caracteres).
+ * @param {string[]} encabezados
+ * @param {Array<Array>} filas  Valores; se escriben como texto.
+ * @return {Uint8Array} el archivo .xlsx
+ */
+function generarXlsx(nombreHoja, encabezados, filas) {
+  var hoja = String(nombreHoja || 'Datos').replace(/[\[\]:*?\/\\]/g, ' ')
+    .replace(/\s+/g, ' ').trim().slice(0, 31) || 'Datos';
+  var columnas = encabezados.length;
+  var ultima = letraColumnaXlsx(Math.max(columnas, 1)) + (filas.length + 1);
+
+  // Ancho de cada columna segun su texto mas largo, sin pasar de 60.
+  var anchos = encabezados.map(function (h, i) {
+    var largo = String(h).length;
+    filas.forEach(function (f) {
+      String(f[i] === null || f[i] === undefined ? '' : f[i]).split('\n').forEach(function (l) {
+        if (l.length > largo) largo = l.length;
+      });
+    });
+    return Math.min(60, Math.max(10, largo + 2));
+  });
+
+  function celda(valor, columna, fila, estilo) {
+    var texto = textoXmlXlsx(valor);
+    return '<c r="' + letraColumnaXlsx(columna + 1) + fila + '" t="inlineStr" s="' + estilo + '">' +
+      '<is><t xml:space="preserve">' + texto + '</t></is></c>';
+  }
+
+  var xmlFilas = ['<row r="1">' + encabezados.map(function (h, i) { return celda(h, i, 1, 1); }).join('') + '</row>'];
+  filas.forEach(function (f, n) {
+    var r = n + 2;
+    var celdas = [];
+    for (var i = 0; i < columnas; i++) celdas.push(celda(f[i], i, r, 2));
+    xmlFilas.push('<row r="' + r + '">' + celdas.join('') + '</row>');
+  });
+
+  var archivos = [
+    ['[Content_Types].xml',
+      DECLARACION_XML_XLSX +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      '</Types>'],
+    ['_rels/.rels',
+      DECLARACION_XML_XLSX +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>'],
+    ['xl/workbook.xml',
+      DECLARACION_XML_XLSX +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheets><sheet name="' + textoXmlXlsx(hoja) + '" sheetId="1" r:id="rId1"/></sheets>' +
+      '<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">' +
+      textoXmlXlsx("'" + hoja.replace(/'/g, "''") + "'!$A$1:$" + ultima.replace(/(\d+)$/, '$$$1')) +
+      '</definedName></definedNames>' +
+      '</workbook>'],
+    ['xl/_rels/workbook.xml.rels',
+      DECLARACION_XML_XLSX +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '</Relationships>'],
+    ['xl/styles.xml',
+      DECLARACION_XML_XLSX +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
+      '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+      '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFF1F3F9"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+      '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="49" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>' +
+      '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1">' +
+      '<alignment vertical="top" wrapText="1"/></xf></cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+      '</styleSheet>'],
+    ['xl/worksheets/sheet1.xml',
+      DECLARACION_XML_XLSX +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<dimension ref="A1:' + ultima + '"/>' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
+      '</sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="15"/>' +
+      (anchos.length ? '<cols>' + anchos.map(function (a, i) {
+        return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + a + '" customWidth="1"/>';
+      }).join('') + '</cols>' : '') +
+      '<sheetData>' + xmlFilas.join('') + '</sheetData>' +
+      '<autoFilter ref="A1:' + ultima + '"/>' +
+      '</worksheet>']
+  ];
+
+  return zipSinComprimirXlsx(archivos.map(function (a) {
+    return { nombre: a[0], datos: new TextEncoder().encode(a[1]) };
+  }));
+}
+
+/** 1 -> A, 26 -> Z, 27 -> AA. */
+function letraColumnaXlsx(n) {
+  var s = '';
+  while (n > 0) {
+    var r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+/**
+ * Texto apto para XML: escapa los caracteres reservados y quita los de
+ * control que el formato no admite. Excel no guarda mas de 32.767
+ * caracteres por celda.
+ */
+function textoXmlXlsx(valor) {
+  return String(valor === null || valor === undefined ? '' : valor)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/g, '')
+    .slice(0, 32767)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+var TABLA_CRC_XLSX = null;
+function crc32Xlsx(bytes) {
+  if (!TABLA_CRC_XLSX) {
+    TABLA_CRC_XLSX = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      TABLA_CRC_XLSX.push(c >>> 0);
+    }
+  }
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) crc = TABLA_CRC_XLSX[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+/** ZIP minimo: cabecera local, directorio central y cierre; sin compresion. */
+function zipSinComprimirXlsx(archivos) {
+  var ahora = new Date();
+  var hora = (ahora.getHours() << 11) | (ahora.getMinutes() << 5) | Math.floor(ahora.getSeconds() / 2);
+  var fecha = ((ahora.getFullYear() - 1980) << 9) | ((ahora.getMonth() + 1) << 5) | ahora.getDate();
+  var partes = [], central = [], desplazamiento = 0;
+
+  function cabecera(tamano) { return { b: new Uint8Array(tamano), p: 0 }; }
+  function u16(c, v) { c.b[c.p++] = v & 0xFF; c.b[c.p++] = (v >>> 8) & 0xFF; }
+  function u32(c, v) { u16(c, v & 0xFFFF); u16(c, (v >>> 16) & 0xFFFF); }
+  function bytes(c, arr) { c.b.set(arr, c.p); c.p += arr.length; }
+
+  archivos.forEach(function (a) {
+    var nombre = new TextEncoder().encode(a.nombre);
+    var crc = crc32Xlsx(a.datos);
+    var local = cabecera(30 + nombre.length);
+    u32(local, 0x04034B50); u16(local, 20); u16(local, 0); u16(local, 0);
+    u16(local, hora); u16(local, fecha); u32(local, crc);
+    u32(local, a.datos.length); u32(local, a.datos.length);
+    u16(local, nombre.length); u16(local, 0); bytes(local, nombre);
+
+    var dir = cabecera(46 + nombre.length);
+    u32(dir, 0x02014B50); u16(dir, 20); u16(dir, 20); u16(dir, 0); u16(dir, 0);
+    u16(dir, hora); u16(dir, fecha); u32(dir, crc);
+    u32(dir, a.datos.length); u32(dir, a.datos.length);
+    u16(dir, nombre.length); u16(dir, 0); u16(dir, 0); u16(dir, 0); u16(dir, 0);
+    u32(dir, 0); u32(dir, desplazamiento); bytes(dir, nombre);
+
+    partes.push(local.b, a.datos);
+    central.push(dir.b);
+    desplazamiento += local.b.length + a.datos.length;
+  });
+
+  var tamanoCentral = central.reduce(function (s, b) { return s + b.length; }, 0);
+  var fin = cabecera(22);
+  u32(fin, 0x06054B50); u16(fin, 0); u16(fin, 0);
+  u16(fin, archivos.length); u16(fin, archivos.length);
+  u32(fin, tamanoCentral); u32(fin, desplazamiento); u16(fin, 0);
+
+  var todo = partes.concat(central, [fin.b]);
+  var total = todo.reduce(function (s, b) { return s + b.length; }, 0);
+  var salida = new Uint8Array(total), p = 0;
+  todo.forEach(function (b) { salida.set(b, p); p += b.length; });
+  return salida;
+}
+</script>
+
+<script>
 /* El navegador obtiene solo la sitekey pública; la prueba la valida Apps Script. */
 var configuracionAcceso = null;
 var cargaTurnstile = null;
@@ -2433,6 +2642,9 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-sesion { font-size: 13px; color: var(--color-texto-suave); }
 .th-sesion strong { font-weight: 500; color: var(--color-texto-medio); overflow-wrap: anywhere; }
 .th-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.th .th-boton-enlace { display: inline-flex; align-items: center; padding: 9px 14px; border: 1px solid var(--color-borde); border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--color-texto-medio); text-decoration: none; background: var(--color-superficie); }
+.th .th-boton-enlace:hover { background: var(--color-superficie-2); border-color: var(--color-borde-fuerte); }
+.th-cabecera .th-nota { margin-top: 4px !important; }
 .th button, .th-ficha button { padding: 9px 14px; border-radius: 6px; font-weight: 500; font-size: 13px; }
 .th .btn-secundario, .th-ficha .btn-secundario { border-color: var(--color-borde); color: var(--color-texto-medio); }
 .th .btn-secundario:hover, .th-ficha .btn-secundario:hover { background: var(--color-superficie-2); border-color: var(--color-borde-fuerte); }
@@ -2463,7 +2675,7 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-analisis-cabecera { margin-bottom: 20px; }
 .th-analisis-cabecera h3 { font-size: 23px; letter-spacing: -.03em; margin-bottom: 6px; }
 .th-analisis-cabecera p { font-size: 14px; color: var(--color-texto-suave); max-width: 80ch; }
-.th-filtros-analisis { display: grid; grid-template-columns: minmax(160px,1fr) minmax(200px,1.5fr) auto auto; gap: 12px; align-items: end; padding: 16px; margin-bottom: 20px; background: #fff; border: 1px solid var(--color-borde); border-radius: 10px; }
+.th-filtros-analisis { display: grid; grid-template-columns: minmax(160px,1fr) minmax(200px,1.5fr) auto; gap: 12px; align-items: end; padding: 16px; margin-bottom: 20px; background: #fff; border: 1px solid var(--color-borde); border-radius: 10px; }
 .th-contexto { font-size: 12px; color: var(--color-texto-suave); margin-bottom: 14px !important; }
 .th-metricas { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 22px; }
 .th-metrica { background: #fff; border: 1px solid var(--color-borde); border-radius: 10px; padding: 18px; }
@@ -2490,6 +2702,23 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-valor dd { margin: 0; flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
 .th-vacio { color: var(--color-texto-suave); font-size: 14px; padding: 24px 0; }
 .th-alcance { font-size: 12px; color: var(--color-texto-suave); line-height: 1.65; padding: 4px 0; }
+/* ---------- Donas y cumpleanos del analisis ---------- */
+.th-dona-cuerpo { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); gap: 20px; align-items: center; }
+.th-dona-lienzo { position: relative; aspect-ratio: 1 / 1; width: 100%; }
+.th-leyenda { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.th-leyenda li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid #eef0f3; }
+.th-leyenda li:last-child { border-bottom: 0; }
+.th-muestra { width: 12px; height: 12px; border-radius: 3px; }
+.th-leyenda-valor { font-variant-numeric: tabular-nums; color: var(--color-texto-suave); white-space: nowrap; }
+.th-leyenda-valor b { color: var(--color-texto); font-weight: 600; }
+.th-cumple { margin-bottom: 18px; }
+.th-campo-linea { display: flex; align-items: center; gap: 8px; }
+.th-campo-linea label { margin: 0; }
+.th-campo-linea select { width: auto; min-width: 140px; }
+@media (max-width: 560px) {
+  .th-dona-cuerpo { grid-template-columns: 1fr; }
+  .th-dona-lienzo { max-width: 220px; margin: 0 auto; }
+}
 .th-biblioteca { padding: 12px 16px; background: #fff7e6; color: #795118; border: 1px solid #f0dcae; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
 @media (max-width: 900px) {
   .th-metricas { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -2531,6 +2760,61 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th .th-ver:hover { background: var(--color-superficie-2); border-color: var(--color-borde-fuerte); }
 .th-pie { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 14px; }
 .th-paginacion { display: flex; gap: 8px; }
+.th-filtros.con-estado { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
+.th-etiqueta { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; vertical-align: 1px; background: var(--color-error-fondo); color: var(--color-error); border: 1px solid var(--color-primario-borde); }
+.th tr.anulado td { color: var(--color-texto-tenue); }
+.th-descarga { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.th-nota { font-size: 12px; color: var(--color-texto-suave); }
+.th-nota:empty { display: none; }
+.th-nota.error { color: var(--color-error); font-weight: 600; }
+
+/* ---------- Avance de quienes ya diligenciaron ---------- */
+.th-metrica strong.th-metrica-texto { font-size: 20px; line-height: 1.5; letter-spacing: -.02em; }
+.th-riel { height: 10px; border-radius: 999px; background: var(--color-riel); overflow: hidden; }
+.th-riel span { display: block; height: 100%; border-radius: inherit; background: #244b70; }
+.th-columnas { display: grid; grid-template-columns: 3fr 2fr; gap: 18px; margin-bottom: 18px; }
+.th-grupos { list-style: none; margin: 0; padding: 0; }
+.th-grupo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid #eef0f3; font-size: 13px; }
+.th-grupo:last-child { border-bottom: 0; }
+.th-grupo .th-riel { grid-column: 1 / -1; height: 6px; }
+.th-grupo-nombre { overflow-wrap: anywhere; }
+.th-grupo-cifra { font-variant-numeric: tabular-nums; color: var(--color-texto-suave); white-space: nowrap; }
+.th-grupo-cifra b { color: var(--color-texto); font-weight: 600; }
+.th-grupo details { grid-column: 1 / -1; font-size: 12px; color: var(--color-texto-suave); }
+.th-grupo summary { cursor: pointer; width: fit-content; }
+.th-grupo details ul { list-style: none; margin: 6px 0 0; padding: 0 0 0 12px; border-left: 2px solid #eef0f3; }
+.th-grupo details li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; color: var(--color-texto-medio); }
+.th-grupo details li span:last-child { font-variant-numeric: tabular-nums; }
+.th .th-enlace { background: none; border: 0; padding: 0; color: var(--color-azul); font: inherit; font-size: 13px; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.th .th-enlace:hover { color: #102a43; }
+.th-bloque { margin-top: 18px; }
+.th-avance-dias { margin-bottom: 18px; }
+.th-avance-dias h3 { margin-bottom: 4px !important; }
+/* Barras y fechas comparten el desplazamiento: con muchos dias en un celular se mueven juntas. */
+.th-dias-marco { overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
+.th-dias { display: flex; align-items: flex-end; gap: 3px; height: 190px; padding: 22px 0 0; border-bottom: 1px solid var(--color-borde); }
+.th-dia { flex: 1 0 9px; max-width: 46px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.th-dia-barra { width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: #244b70; }
+.th-dia-barra.cero { background: var(--color-riel); }
+.th-dia-cifra { font-size: 10px; font-weight: 600; color: #102a43; margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+.th-dias-etiquetas { display: flex; gap: 3px; font-size: 10px; color: var(--color-texto-suave); margin-top: 4px; }
+.th-dias-etiquetas span { flex: 1 0 9px; max-width: 46px; display: flex; justify-content: center; white-space: nowrap; overflow: visible; }
+.th table.th-compacta { min-width: 720px; }
+
+/* ---------- Anulacion dentro de la ficha ---------- */
+.th-ficha .btn-peligro, .th .btn-peligro { background: var(--color-superficie); color: var(--color-error); border: 1px solid var(--color-primario-borde); }
+.th-ficha .btn-peligro:hover:not(:disabled) { background: var(--color-error-fondo); border-color: var(--color-error); }
+.th-ficha .btn-peligro-lleno { background: var(--color-error); color: #fff; border: 1px solid var(--color-error); }
+.th-ficha .btn-peligro-lleno:disabled { opacity: .6; }
+.th-anular { background: var(--color-superficie); border: 1px solid var(--color-primario-borde); border-left: 3px solid var(--color-error); border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
+.th-anular h3 { font-size: 15px; margin-bottom: 6px !important; }
+.th-anular p { font-size: 13px; color: var(--color-texto-medio); line-height: 1.6; margin-bottom: 10px !important; }
+.th-anular label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.th-anular textarea { width: 100%; min-height: 76px; font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--color-borde-fuerte); border-radius: 6px; resize: vertical; }
+.th-anular .th-contador-motivo { font-size: 12px; color: var(--color-texto-suave); margin: 4px 0 10px !important; }
+.th-anular .th-acciones-anular { display: flex; gap: 8px; flex-wrap: wrap; }
+.th-anular.hecho { border-color: #cfe5d1; border-left-color: var(--color-exito); background: var(--color-exito-fondo); }
+.th-anular a { color: var(--color-azul); font-weight: 600; }
 
 /* ---------- Ficha: tarjeta centrada ---------- */
 .th-fondo-ficha {
@@ -2551,6 +2835,7 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-ficha-radicado { font-size: 13px; color: var(--color-texto-suave); margin-top: 2px !important; }
 .th-chips { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .th-chips li { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--color-azul-suave); color: var(--color-texto-medio); }
+.th-chips li.anulado { background: var(--color-error-fondo); color: var(--color-error); font-weight: 600; }
 .th-ficha-lateral { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
 .th .th-cerrar, .th-ficha .th-cerrar {
   width: 36px; height: 36px; padding: 0; font-size: 22px; line-height: 1; border-radius: 50%;
@@ -2569,8 +2854,9 @@ function verificarVisitante(accion, contenedor, opciones) {
 
 @media (max-width: 900px) {
   .th-graficos { grid-template-columns: 1fr; }
-  .th-filtros { grid-template-columns: 1fr 1fr; }
+  .th-filtros, .th-filtros.con-estado { grid-template-columns: 1fr 1fr; }
   .th-filtros .th-campo:first-child { grid-column: 1 / -1; }
+  .th-columnas { grid-template-columns: 1fr; }
 }
 @media (max-width: 680px) {
   .th-fondo-ficha { padding: 0; align-items: stretch; }
@@ -2582,7 +2868,9 @@ function verificarVisitante(accion, contenedor, opciones) {
 }
 @media (max-width: 560px) {
   .th { padding: 20px 16px 48px; }
-  .th-filtros { grid-template-columns: 1fr; }
+  .th-filtros, .th-filtros.con-estado { grid-template-columns: 1fr; }
+  .th-tabla-titulo { flex-direction: column; align-items: flex-start; }
+  .th-descarga { justify-content: flex-start; }
   .th-resumen-reciente { margin-left: 0 !important; }
   .enlace-th { margin-left: 0; }
 }
@@ -2604,8 +2892,12 @@ function verificarVisitante(accion, contenedor, opciones) {
     <div class="th-cabecera">
       <h2 id="thTitulo" tabindex="-1">Panel de Talento Humano</h2>
       <p class="th-sesion" id="thSesion" hidden><strong id="thUsuario"></strong> · <span id="thActualizado"></span></p>
+      <p class="th-nota" id="thNotaHoja" hidden>La hoja abre en CONSOLIDADO, que se rehace sola: corrija los datos en las pestañas de origen (PERSONAS, HIJOS…).</p>
     </div>
     <div class="th-acciones">
+      <a class="btn-secundario th-boton-enlace" id="thAbrirHoja" href="#" target="_blank" rel="noopener noreferrer" hidden
+         aria-describedby="thNotaHoja">Abrir hoja de datos</a>
+      <a class="btn-secundario th-boton-enlace" id="thAbrirCarpeta" href="#" target="_blank" rel="noopener noreferrer" hidden>Carpeta en Drive</a>
       <button type="button" class="btn-secundario" id="thSalir" hidden>Cerrar sesión</button>
       <button type="button" class="btn-secundario" id="thIrFormulario">Volver al formulario</button>
     </div>
@@ -2627,22 +2919,81 @@ function verificarVisitante(accion, contenedor, opciones) {
   </div>
 
   <div id="thContenido" hidden>
-    <section class="th-resumen" aria-label="Resumen general">
+    <section class="th-resumen" id="thResumen" aria-label="Resumen general">
       <p class="th-resumen-total"><strong id="thTotal">0</strong> registros recibidos</p>
       <div class="th-resumen-tipos">
         <span><strong id="thAdministrativos">0</strong> administrativos</span>
         <span><strong id="thDocentes">0</strong> docentes</span>
+        <span id="thResumenAnulados" hidden><strong id="thAnulados">0</strong> anulados</span>
       </div>
       <p class="th-resumen-reciente"><strong id="thSemana">0</strong> en los últimos 7 días</p>
     </section>
 
     <div class="th-tabs" role="tablist" aria-label="Vistas de Talento Humano">
-      <button type="button" class="th-tab" id="thTabAnalisis" role="tab" aria-selected="true" aria-controls="thVistaAnalisis">Análisis del personal</button>
+      <button type="button" class="th-tab" id="thTabAvance" role="tab" aria-selected="true" aria-controls="thVistaAvance">Avance</button>
       <button type="button" class="th-tab" id="thTabRegistros" role="tab" aria-selected="false" aria-controls="thVistaRegistros" tabindex="-1">Registros</button>
+      <button type="button" class="th-tab" id="thTabAnalisis" role="tab" aria-selected="false" aria-controls="thVistaAnalisis" tabindex="-1">Análisis del personal</button>
     </div>
+
+    <section id="thVistaAvance" role="tabpanel" aria-labelledby="thTabAvance">
+      <div class="th-metricas">
+        <article class="th-metrica"><p>Registros vigentes</p><strong id="thAvTotal">0</strong><small id="thAvComposicion"></small></article>
+        <article class="th-metrica"><p>Hoy</p><strong id="thAvHoy">0</strong><small>Desde las 00:00, hora de Colombia</small></article>
+        <article class="th-metrica"><p>Últimos 7 días</p><strong id="thAvSemana">0</strong><small id="thAvPromedio"></small></article>
+        <article class="th-metrica"><p>Último registro</p><strong class="th-metrica-texto" id="thAvUltimo">—</strong><small id="thAvUltimoDetalle"></small></article>
+      </div>
+
+      <section class="th-tarjeta th-avance-dias" aria-labelledby="thAvDiasTitulo">
+        <h3 id="thAvDiasTitulo">Registros por día</h3>
+        <p class="th-nota" id="thAvDiasBase"></p>
+        <div class="th-dias-marco" aria-hidden="true">
+          <div class="th-dias" id="thAvDias"></div>
+          <div class="th-dias-etiquetas" id="thAvDiasEtiquetas"></div>
+        </div>
+        <details class="th-valores">
+          <summary>Ver datos por día</summary>
+          <dl id="thAvDiasValores"></dl>
+        </details>
+      </section>
+
+      <div class="th-columnas">
+        <section class="th-tarjeta">
+          <h3>Por unidad directiva</h3>
+          <p class="th-nota" style="margin:-8px 0 8px;">Pulse una unidad para ver sus registros. En «Dependencias» está el detalle.</p>
+          <ul class="th-grupos" id="thAvUnidades"></ul>
+        </section>
+        <section class="th-tarjeta">
+          <h3>Por vinculación</h3>
+          <ul class="th-grupos" id="thAvVinculaciones"></ul>
+        </section>
+      </div>
+
+      <section class="th-tarjeta th-bloque">
+        <div class="th-tabla-titulo">
+          <h3>Últimos registros recibidos</h3>
+          <button type="button" class="btn-secundario" id="thAvVerTodos">Ver todos los registros</button>
+        </div>
+        <div class="th-tabla-envoltura">
+          <table class="th-compacta">
+            <thead>
+              <tr><th scope="col">Registro</th><th scope="col">Nombre</th><th scope="col">Vinculación</th><th scope="col">Dependencia</th><th scope="col"><span class="solo-lectores">Acciones</span></th></tr>
+            </thead>
+            <tbody id="thAvUltimos"></tbody>
+          </table>
+        </div>
+        <p class="th-estado" id="thAvVacio" hidden>Aún nadie ha diligenciado el formulario.</p>
+      </section>
+    </section>
+
     <section class="th-tarjeta" id="thVistaRegistros" role="tabpanel" aria-labelledby="thTabRegistros" hidden>
-      <div class="th-tabla-titulo"><h3 id="thTituloTabla">Registros del personal</h3></div>
-      <div class="th-filtros" role="search">
+      <div class="th-tabla-titulo">
+        <h3 id="thTituloTabla">Registros del personal</h3>
+        <div class="th-descarga">
+          <p class="th-nota" id="thExportarEstado" role="status" aria-live="polite"></p>
+          <button type="button" class="btn-secundario" id="thExportar">Descargar Excel</button>
+        </div>
+      </div>
+      <div class="th-filtros con-estado" role="search">
         <div class="th-campo">
           <label for="thBuscar">Buscar registros</label>
           <input type="search" id="thBuscar" autocomplete="off" aria-describedby="thAyudaBuscar"
@@ -2655,6 +3006,14 @@ function verificarVisitante(accion, contenedor, opciones) {
         <div class="th-campo">
           <label for="thFiltroUnidad">Unidad directiva</label>
           <select id="thFiltroUnidad"><option value="">Todas</option></select>
+        </div>
+        <div class="th-campo">
+          <label for="thFiltroEstado">Estado</label>
+          <select id="thFiltroEstado">
+            <option value="ACTIVO">Activos</option>
+            <option value="ANULADO">Anulados</option>
+            <option value="">Todos</option>
+          </select>
         </div>
         <button type="button" class="btn-secundario" id="thLimpiar">Limpiar</button>
         <p class="th-ayuda solo-lectores" id="thAyudaBuscar">Busque por documento, con o sin puntos y espacios, por nombre o por apellido.</p>
@@ -2683,15 +3042,14 @@ function verificarVisitante(accion, contenedor, opciones) {
       </div>
     </section>
 
-    <section id="thVistaAnalisis" role="tabpanel" aria-labelledby="thTabAnalisis">
+    <section id="thVistaAnalisis" role="tabpanel" aria-labelledby="thTabAnalisis" hidden>
       <div class="th-analisis-cabecera">
-        <h3>Conozcamos a nuestro personal</h3>
-        <p>Una lectura de su formación, entorno familiar e intereses para orientar la gestión de Talento Humano y Bienestar.</p>
+        <h3>Caracterización del personal</h3>
+        <p>Información sociodemográfica, académica, familiar, de bienestar y de seguridad social del personal con registro activo.</p>
       </div>
       <form class="th-filtros-analisis" id="thFiltrosAnalisis">
         <div class="th-campo"><label for="thAnalisisVinculacion">Vinculación</label><select id="thAnalisisVinculacion"><option value="">Todas</option></select></div>
         <div class="th-campo"><label for="thAnalisisUnidad">Unidad directiva</label><select id="thAnalisisUnidad"><option value="">Todas</option></select></div>
-        <button type="submit" class="btn-primario">Aplicar filtros</button>
         <button type="button" class="btn-secundario" id="thAnalisisLimpiar">Restablecer</button>
       </form>
       <p class="th-estado" id="thAnalisisEstado" role="status" hidden>Preparando el análisis del personal…</p>
@@ -2701,18 +3059,39 @@ function verificarVisitante(accion, contenedor, opciones) {
         <div class="th-metricas">
           <article class="th-metrica"><p>Personas analizadas</p><strong id="thPersonasAnalizadas">0</strong><small id="thBasePersonas"></small></article>
           <article class="th-metrica"><p>Edad promedio</p><strong id="thEdadPromedio">—</strong><small id="thBaseEdad"></small></article>
-          <article class="th-metrica"><p>Reportan tener hijos</p><strong id="thConHijos">—</strong><small id="thBaseHijos"></small></article>
-          <article class="th-metrica"><p>Practican actividad física</p><strong id="thActividadFisica">—</strong><small id="thBaseDeporte"></small></article>
+          <article class="th-metrica"><p>Hijos menores de 18 años</p><strong id="thHijosMenores">—</strong><small id="thBaseHijosMenores"></small></article>
+          <article class="th-metrica"><p>Docentes con posgrado</p><strong id="thDocPosgrado">—</strong><small id="thBaseDocentes"></small></article>
         </div>
         <div class="th-temas" role="group" aria-label="Temas del análisis">
           <button type="button" class="th-tema" data-th-tema="perfil" aria-pressed="true">Perfil del personal</button>
+          <button type="button" class="th-tema" data-th-tema="formacion" aria-pressed="false">Formación</button>
           <button type="button" class="th-tema" data-th-tema="bienestar" aria-pressed="false">Bienestar e intereses</button>
           <button type="button" class="th-tema" data-th-tema="familia" aria-pressed="false">Entorno familiar</button>
+          <button type="button" class="th-tema" data-th-tema="seguridad" aria-pressed="false">Seguridad social</button>
         </div>
-        <section class="th-lectura" aria-labelledby="thLecturaTitulo"><h4 id="thLecturaTitulo">Lectura del perfil</h4><p id="thLecturaTexto"></p><p id="thLecturaUso"></p></section>
+        <section class="th-lectura" aria-labelledby="thLecturaTitulo"><h4 id="thLecturaTitulo">Resumen del perfil</h4><p id="thLecturaTexto"></p><p id="thLecturaUso"></p></section>
         <div class="th-biblioteca" id="thErrorGraficos" role="status" hidden><p>No se pudieron cargar los gráficos. Las cantidades siguen disponibles en «Ver datos».</p><button type="button" class="btn-secundario" id="thReintentarGraficos">Reintentar gráficos</button></div>
         <div class="th-graficos" id="thGraficos"></div>
-        <p class="th-alcance">Todos los porcentajes usan como base el total de personas con registro activo que diligenciaron el formulario, una vez por documento. Al filtrar se muestran las cantidades seleccionadas, manteniendo ese total como base. El promedio de edad usa únicamente edades válidas de la selección. «Sin dato» y «Sin detalle registrado» identifican información ausente.</p>
+        <section class="th-tarjeta th-cumple" id="thCumple" hidden aria-labelledby="thCumpleTitulo">
+          <div class="th-tabla-titulo">
+            <h3 id="thCumpleTitulo">Cumpleaños del mes</h3>
+            <div class="th-descarga">
+              <div class="th-campo th-campo-linea">
+                <label for="thCumpleMes">Mes</label>
+                <select id="thCumpleMes"></select>
+              </div>
+              <button type="button" class="btn-secundario" id="thCumpleExcel" disabled>Descargar (Excel)</button>
+            </div>
+          </div>
+          <p class="th-nota" id="thCumpleEstado" role="status" aria-live="polite"></p>
+          <div class="th-tabla-envoltura">
+            <table class="th-compacta">
+              <thead><tr><th scope="col">Día</th><th scope="col">Nombre</th><th scope="col">Vinculación</th><th scope="col">Dependencia</th></tr></thead>
+              <tbody id="thCumpleCuerpo"></tbody>
+            </table>
+          </div>
+        </section>
+        <p class="th-alcance">En las barras sobre personas, el porcentaje usa como base el total de personas con registro activo, una vez por documento, aunque haya filtros. Las donas reparten el 100 % entre las personas de la selección. Los gráficos de hijos, docentes y estudios indican su propia base. El promedio de edad usa solo edades válidas. «Sin dato» y «Sin detalle registrado» (en gris) identifican información ausente.</p>
       </div>
     </section>
 
@@ -2734,10 +3113,31 @@ function verificarVisitante(accion, contenedor, opciones) {
         <div class="th-ficha-acciones">
           <button type="button" class="btn-primario" id="thPdf" disabled>Descargar PDF</button>
           <button type="button" class="btn-secundario" id="thImprimir" disabled>Imprimir</button>
+          <button type="button" class="btn-peligro" id="thAnularAbrir" disabled>Anular registro</button>
         </div>
       </div>
     </header>
     <div class="th-ficha-cuerpo">
+      <section class="th-anular" id="thAnular" hidden aria-labelledby="thAnularTitulo">
+        <div id="thAnularFormulario">
+          <h3 id="thAnularTitulo" tabindex="-1">Anular este registro</h3>
+          <p>La persona podrá diligenciar de nuevo el formulario con el mismo documento y correo. El registro anulado no se borra: queda en la hoja para consulta y la anulación se anota en la bitácora con su cuenta y el motivo.</p>
+          <label for="thAnularMotivo">Motivo de la anulación (obligatorio)</label>
+          <textarea id="thAnularMotivo" maxlength="300" aria-describedby="thAnularContador thAnularError"
+                    placeholder="Ej.: La persona escribió mal su número de documento y pidió corregirlo."></textarea>
+          <p class="th-contador-motivo" id="thAnularContador"></p>
+          <p class="th-nota error" id="thAnularError" role="alert"></p>
+          <div class="th-acciones-anular">
+            <button type="button" class="btn-peligro-lleno" id="thAnularConfirmar">Confirmar anulación</button>
+            <button type="button" class="btn-secundario" id="thAnularCancelar">Cancelar</button>
+          </div>
+        </div>
+        <div id="thAnularHecho" hidden>
+          <h3 id="thAnularHechoTitulo" tabindex="-1">Registro anulado</h3>
+          <p id="thAnularHechoTexto"></p>
+          <p><a id="thAnularCorreo" href="#" hidden>Escribir a la persona para que diligencie de nuevo el formulario</a></p>
+        </div>
+      </section>
       <p class="th-estado" id="thFichaEstado" role="status" hidden></p>
       <div id="thSecciones"></div>
     </div>
@@ -2753,12 +3153,16 @@ function verificarVisitante(accion, contenedor, opciones) {
 var PanelTH = (function () {
   var POR_PAGINA = 25;
   var URL_GOOGLE = 'https://accounts.google.com/gsi/client';
+  var TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  var ACTIVO = 'ACTIVO', ANULADO = 'ANULADO';
+  var VISTAS = ['Avance', 'Registros', 'Analisis'];
 
   var activo = false;
   var previo = null;          // que estaba a la vista antes de abrir el panel
   var idToken = null;
   var filas = [], filtradas = [], pagina = 1;
-  var fichaActual = null, turnoFicha = 0, botonOrigen = null;
+  var fichaActual = null, fichaFila = null, turnoFicha = 0, botonOrigen = null;
+  var indicadoresActuales = null;
   var cargaGoogle = null, googleListo = false;
   var turnoDatos = 0;
 
@@ -2881,8 +3285,11 @@ var PanelTH = (function () {
     limpiarAnalisis();
     cerrarFicha();
     filtradas = [];
+    indicadoresActuales = null;
     el('thCuerpoTabla').textContent = '';
-    vistaPanel = 'analisis';
+    el('thExportarEstado').textContent = '';
+    enlacesDrive({});
+    vistaPanel = 'avance';
     filas = [];
     if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
     prepararIngreso();
@@ -2904,31 +3311,57 @@ var PanelTH = (function () {
 
   /* ---------- Datos ---------- */
 
-  function cargar() {
+  /**
+   * Trae la tabla. "silencioso" la actualiza sin la pantalla de carga ni
+   * cambio de pestana: es lo que se usa despues de anular un registro.
+   */
+  function cargar(silencioso) {
     var turno = ++turnoDatos, credencial = idToken;
-    vista('thCarga');
+    if (!silencioso) vista('thCarga');
     pedir('panelDatos', { idToken: credencial }).then(function (d) {
       if (turno !== turnoDatos || idToken !== credencial) return;
       filas = d.filas || [];
       el('thUsuario').textContent = d.usuario;
+      enlacesDrive(d.enlaces || {});
       el('thActualizado').textContent = 'datos al ' + d.actualizado;
       llenarFiltros();
+      var paginaAnterior = pagina;
       aplicarFiltros();
+      if (silencioso) { pagina = paginaAnterior; tabla(); }
       // Primero a la vista: los graficos se dibujan con el ancho real.
       vista('thContenido');
-      indicadores(d.indicadores || {});
-      cambiarVista(vistaPanel);
+      indicadoresActuales = d.indicadores || {};
+      indicadores(indicadoresActuales);
+      if (!silencioso) cambiarVista(vistaPanel);
+      else if (vistaPanel === 'avance') pintarAvance();
     }).catch(function (e) {
       if (turno !== turnoDatos || idToken !== credencial) return;
       manejarError(e, function (m) {
+        if (silencioso) { nota('thExportarEstado', m, true); return; }
         el('thTextoError').textContent = m;
         vista('thError');
       });
     });
   }
 
+  /** Botones al Drive: solo los muestra si el servidor entregó la dirección. */
+  function enlacesDrive(enlaces) {
+    [['thAbrirHoja', enlaces.hoja], ['thAbrirCarpeta', enlaces.carpeta]].forEach(function (e) {
+      var valido = /^https:\/\/(docs|drive)\.google\.com\//.test(e[1] || '');
+      el(e[0]).href = valido ? e[1] : '#';
+      el(e[0]).hidden = !valido;
+    });
+    el('thNotaHoja').hidden = el('thAbrirHoja').hidden;
+  }
+
+  /** Tras anular: la tabla, el avance y el análisis cambian. */
+  function refrescarTrasCambio() {
+    cargar(true);
+    datosAnalisis = null;
+  }
+
   /* ---------- Análisis descriptivo con Chart.js ---------- */
-  var vistaPanel = 'analisis', temaAnalisis = 'perfil';
+  var vistaPanel = 'avance', temaAnalisis = 'perfil';
   var datosAnalisis = null, cargaChart = null, graficas = [], turnoAnalisis = 0, turnoDibujo = 0;
 
   function indicadores(i) {
@@ -2936,6 +3369,8 @@ var PanelTH = (function () {
     el('thAdministrativos').textContent = i.administrativos || 0;
     el('thDocentes').textContent = i.docentes || 0;
     el('thSemana').textContent = i.ultimaSemana || 0;
+    el('thAnulados').textContent = i.anulados || 0;
+    el('thResumenAnulados').hidden = !i.anulados;
   }
   function destruirGraficas() {
     turnoDibujo++;
@@ -2944,8 +3379,13 @@ var PanelTH = (function () {
   }
   function limpiarAnalisis() {
     turnoAnalisis++;
+    turnoCumple++;
     destruirGraficas();
     datosAnalisis = null;
+    cumpleCache = {};
+    cumpleActual = null;
+    el('thCumple').hidden = true;
+    el('thCumpleCuerpo').textContent = '';
     el('thGraficos').textContent = '';
     el('thAnalisisContenido').hidden = true;
     el('thAnalisisEstado').hidden = true;
@@ -2953,7 +3393,7 @@ var PanelTH = (function () {
   }
   function cambiarVista(nombre) {
     vistaPanel = nombre;
-    ['Registros', 'Analisis'].forEach(function (n) {
+    VISTAS.forEach(function (n) {
       var seleccionada = nombre === n.toLowerCase();
       el('thVista' + n).hidden = !seleccionada;
       el('thTab' + n).setAttribute('aria-selected', String(seleccionada));
@@ -2962,6 +3402,9 @@ var PanelTH = (function () {
     if (nombre === 'analisis') {
       if (datosAnalisis) pintarAnalisis(); else cargarAnalisis();
     }
+    // Avance ya muestra estas cifras en sus tarjetas: no se repiten arriba.
+    el('thResumen').hidden = nombre === 'avance';
+    if (nombre === 'avance') pintarAvance();
   }
   function cargarAnalisis() {
     if (!idToken) return;
@@ -2993,58 +3436,126 @@ var PanelTH = (function () {
   }
   function porcentaje(n, base) { return base ? (Math.round(n / base * 1000) / 10).toLocaleString('es-CO') + ' %' : '—'; }
   function cifra(n) { return Number(n || 0).toLocaleString('es-CO'); }
+  /** El valor mas frecuente que no sea un dato ausente. */
   function principal(lista) {
-    return (lista || []).filter(function (d) { return !/^Sin /i.test(d.etiqueta); })
+    return (lista || []).filter(function (d) { return !esFaltante(d.etiqueta); })
       .sort(function (a, b) { return b.cantidad - a.cantidad || a.etiqueta.localeCompare(b.etiqueta, 'es'); })[0];
   }
+  function sumaDe(lista) { return (lista || []).reduce(function (s, x) { return s + x.cantidad; }, 0); }
+  function cantidadDe(lista, etiqueta) {
+    var x = (lista || []).filter(function (i) { return i.etiqueta === etiqueta; })[0];
+    return x ? x.cantidad : 0;
+  }
+
+  /* Colores. Las donas usan la paleta categorica validada para daltonismo
+     (en orden fijo: el color sigue a la categoria, no a su posicion por
+     cantidad). Las barras van en el azul institucional y lo ausente en gris. */
+  var PALETA = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4'];
+  var GRIS = '#c5cbd3', AZUL = '#244b70';
+  function esFaltante(etiqueta) { return /^(Sin dato|Sin detalle registrado|Con hijos, sin cantidad)$/.test(etiqueta); }
+
+  function ordenFijo() {
+    var catalogos = CONFIG_PUBLICA_SEGURA();
+    return {
+      edad: ['18–24 años', '25–34 años', '35–44 años', '45–54 años', '55 años o más', 'Sin dato'],
+      genero: ['Femenino', 'Masculino', 'No binario', 'Otro', 'Prefiero no responder', 'Sin dato'],
+      familia: ['Sin hijos', '1 hijo', '2 hijos', '3 hijos o más', 'Con hijos, sin cantidad', 'Sin dato'],
+      interes: ['Sí', 'Tal vez', 'No', 'Sin dato'],
+      nivel: (catalogos.nivelesFormacion || []).concat(['Sin dato']),
+      frecuencia: (catalogos.frecuenciasDeporte || ['Ocasionalmente', 'Una o dos veces por semana',
+        'Tres o cuatro veces por semana', 'Cinco o más veces por semana']).concat(['Sin dato']),
+      hijosEdad: ['0 a 5 años', '6 a 12 años', '13 a 17 años', '18 años o más', 'Sin dato'],
+      hijosUnimeta: ['Sin vínculo', 'Estudiante', 'Egresado', 'Egresado y estudiante actual', 'Sin dato']
+    };
+  }
+
   function pintarAnalisis() {
     var d = datosAnalisis;
     if (!d) return;
     var base = d.universo;
+    var filtrado = d.filtros.vinculacion || d.filtros.unidad;
     el('thAnalisisContenido').hidden = false;
     el('thAnalisisContexto').textContent = cifra(d.total) + ' de ' + cifra(d.universo) + ' personas con registro activo · ' +
       (d.filtros.vinculacion || 'Todas las vinculaciones') + ' · ' + (d.filtros.unidad || 'Todas las unidades') + ' · Datos al ' + d.actualizado;
     el('thPersonasAnalizadas').textContent = cifra(d.total);
-    el('thBasePersonas').textContent = porcentaje(d.total, base) + ' del total de ' + cifra(base) + ' participantes';
+    el('thBasePersonas').textContent = filtrado
+      ? porcentaje(d.total, base) + ' de los ' + cifra(base) + ' participantes'
+      : 'Participantes con registro activo';
     el('thEdadPromedio').textContent = d.edadPromedio === null ? '—' : d.edadPromedio.toLocaleString('es-CO') + ' años';
     el('thBaseEdad').textContent = cifra(d.edadesValidas) + ' personas con edad válida';
-    el('thConHijos').textContent = porcentaje(d.conHijos, base);
-    el('thBaseHijos').textContent = cifra(d.conHijos) + ' de ' + cifra(base) + ' participantes totales';
-    el('thActividadFisica').textContent = porcentaje(d.deporteSi, base);
-    el('thBaseDeporte').textContent = cifra(d.deporteSi) + ' de ' + cifra(base) + ' participantes totales';
-    var texto, uso, titulo;
-    if (!d.total) {
-      titulo = 'No hay registros para esta selección';
-      texto = 'Cambie o restablezca los filtros para analizar otros registros.';
-      uso = base ? 'Los porcentajes se calculan sobre los ' + cifra(base) + ' participantes totales; no hay personas que coincidan con los filtros.' : 'Aún no hay participantes para calcular porcentajes o promedios.';
-    } else if (temaAnalisis === 'perfil') {
-      titulo = 'Lectura del perfil';
-      var nivel = principal(d.nivel), ciudad = principal(d.ciudad);
-      texto = 'Se describen ' + cifra(d.total) + ' de los ' + cifra(base) + ' participantes totales.';
-      if (nivel) texto += ' El nivel de formación declarado más frecuente es ' + nivel.etiqueta + ': ' + cifra(nivel.cantidad) + ' personas (' + porcentaje(nivel.cantidad, base) + ').';
-      if (ciudad) texto += ' La residencia más reportada es ' + ciudad.etiqueta + ', con ' + cifra(ciudad.cantidad) + ' personas (' + porcentaje(ciudad.cantidad, base) + ').';
-      uso = 'Esta composición permite orientar programas de cualificación y actividades según las etapas de vida y la ubicación del personal que respondió.';
-    } else if (temaAnalisis === 'bienestar') {
-      titulo = 'Lectura de bienestar e intereses';
-      texto = cifra(d.deporteSi) + ' personas (' + porcentaje(d.deporteSi, base) + ') declaran practicar actividad física y ' + cifra(d.culturaSi) + ' (' + porcentaje(d.culturaSi, base) + ') actividades culturales o artísticas. ' +
-        cifra(d.interesados) + ' manifiestan interés en actividades institucionales y ' + cifra(d.talVez) + ' responden «Tal vez».';
-      var frecuencia = principal(d.frecuencia);
-      if (frecuencia) texto += ' Entre quienes practican deporte, la frecuencia más reportada es «' + frecuencia.etiqueta + '» (' + cifra(frecuencia.cantidad) + ' personas).';
-      uso = 'Las preferencias permiten priorizar la oferta de Bienestar. Una persona puede marcar varias opciones: los porcentajes de estos gráficos pueden sumar más de 100 %.';
-    } else {
-      titulo = 'Lectura del entorno familiar';
-      texto = cifra(d.conHijos) + ' personas (' + porcentaje(d.conHijos, base) + ') reportan tener hijos. ' +
-        (d.familiasConCantidad ? 'Se registran ' + cifra(d.hijosRegistrados) + ' hijos en ' + cifra(d.familiasConCantidad) + ' respuestas con cantidad informada.' : 'No hay cantidades de hijos informadas en esta selección.');
-      uso = 'Estos datos ayudan a dimensionar actividades familiares. Se distinguen las personas con hijos de la cantidad de hijos; las respuestas sin cantidad permanecen visibles.';
-    }
-    el('thLecturaTitulo').textContent = titulo;
-    el('thLecturaTexto').textContent = texto;
-    el('thLecturaUso').textContent = uso;
+    el('thHijosMenores').textContent = d.detalleDisponible ? cifra(d.hijosMenores) : '—';
+    el('thBaseHijosMenores').textContent = d.detalleDisponible
+      ? 'En ' + cifra(d.familiasConMenores) + ' familia(s) · ' + cifra(d.hijosTotal) + ' hijos en total'
+      : 'Detalle de hijos no disponible';
+    el('thDocPosgrado').textContent = d.docentes ? porcentaje(d.docentesPosgrado, d.docentes) : '—';
+    el('thBaseDocentes').textContent = d.docentes
+      ? cifra(d.docentesPosgrado) + ' de ' + cifra(d.docentes) + ' docentes'
+      : 'No hay docentes en esta selección';
+
+    var lectura = lecturaDe(d, base);
+    el('thLecturaTitulo').textContent = lectura.titulo;
+    el('thLecturaTexto').textContent = lectura.texto;
+    el('thLecturaUso').textContent = lectura.uso;
     document.querySelectorAll('[data-th-tema]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.thTema === temaAnalisis));
     });
+    el('thCumple').hidden = temaAnalisis !== 'bienestar';
+    if (temaAnalisis === 'bienestar') cargarCumple();
     if (vistaPanel === 'analisis') dibujarGraficos();
   }
+
+  /** Lectura en palabras de cada tema, calculada desde las cifras. */
+  function lecturaDe(d, base) {
+    if (!d.total) {
+      return { titulo: 'No hay registros para esta selección',
+        texto: 'Cambie o restablezca los filtros para analizar otros registros.',
+        uso: base ? 'Hay ' + cifra(base) + ' participantes en total; ninguno coincide con los filtros.' : 'Aún no hay participantes.' };
+    }
+    var texto, uso, titulo;
+    if (temaAnalisis === 'perfil') {
+      titulo = 'Resumen del perfil';
+      var genero = principal(d.genero), ciudad = principal(d.ciudad), edad = principal(d.edad);
+      texto = 'Se describen ' + cifra(d.total) + ' personas' + (d.edadPromedio !== null ? ', con una edad promedio de ' + d.edadPromedio.toLocaleString('es-CO') + ' años' : '') + '.';
+      if (edad) texto += ' La etapa de vida más frecuente es ' + edad.etiqueta + ' (' + cifra(edad.cantidad) + ' personas).';
+      if (genero) texto += ' El género más declarado es ' + genero.etiqueta.toLowerCase() + ' (' + porcentaje(genero.cantidad, d.total) + ' de la selección).';
+      if (ciudad) texto += ' La residencia más reportada es ' + ciudad.etiqueta + ', con ' + cifra(ciudad.cantidad) + ' personas.';
+      uso = 'Orienta actividades según las etapas de vida y la ubicación del personal.';
+    } else if (temaAnalisis === 'formacion') {
+      titulo = 'Resumen de la formación';
+      var nivel = principal(d.nivel);
+      texto = nivel ? 'El nivel de formación más frecuente es ' + nivel.etiqueta + ' (' + cifra(nivel.cantidad) + ' personas).' : '';
+      if (d.docentes) texto += ' ' + porcentaje(d.docentesPosgrado, d.docentes) + ' de los docentes (' + cifra(d.docentesPosgrado) + ' de ' + cifra(d.docentes) + ') tiene posgrado.';
+      if (d.detalleDisponible) texto += ' ' + cifra(d.personasEstudiando) + ' personas adelantan ' + cifra(d.estudiosEnCurso) + ' estudio(s) en curso.';
+      uso = 'La formación de los docentes sirve para los informes de calidad, registros calificados y acreditación; los estudios en curso, para planear apoyos y capacitación. El nivel es el declarado: no equivale a un título verificado.';
+    } else if (temaAnalisis === 'bienestar') {
+      titulo = 'Resumen de bienestar e intereses';
+      texto = cifra(d.deporteSi) + ' personas (' + porcentaje(d.deporteSi, base) + ') practican actividad física y ' + cifra(d.culturaSi) +
+        ' (' + porcentaje(d.culturaSi, base) + ') actividades culturales o artísticas. ' + cifra(d.interesados) +
+        ' quieren participar en actividades institucionales y ' + cifra(d.talVez) + ' responden «Tal vez».';
+      var mes = (d.cumpleanos || []).slice().sort(function (a, b) { return b.cantidad - a.cantidad; })[0];
+      if (mes && mes.cantidad) texto += ' ' + mes.etiqueta + ' es el mes con más cumpleaños (' + cifra(mes.cantidad) + ').';
+      uso = 'Permite priorizar la oferta de Bienestar. En selección múltiple una persona puede marcar varias opciones: los porcentajes pueden sumar más de 100 %.';
+    } else if (temaAnalisis === 'familia') {
+      titulo = 'Resumen del entorno familiar';
+      texto = cifra(d.conHijos) + ' personas (' + porcentaje(d.conHijos, d.total) + ' de la selección) reportan tener hijos.';
+      if (d.detalleDisponible) {
+        var vinculados = cantidadDe(d.hijosUnimeta, 'Estudiante') + cantidadDe(d.hijosUnimeta, 'Egresado') +
+          cantidadDe(d.hijosUnimeta, 'Egresado y estudiante actual');
+        texto += ' Se registran ' + cifra(d.hijosTotal) + ' hijos: ' + cifra(d.hijosMenores) + ' son menores de 18 años y ' +
+          cifra(d.hijosDependen) + ' dependen económicamente. ' + cifra(vinculados) + ' estudian o se graduaron en UNIMETA.';
+      }
+      uso = 'Dimensiona actividades familiares (Navidad, vacaciones recreativas, día de la familia) y convenios para hijos.';
+    } else {
+      titulo = 'Resumen de la seguridad social';
+      var eps = principal(d.eps), pension = principal(d.pensiones), arl = principal(d.arl);
+      texto = [eps && 'La EPS más frecuente es ' + eps.etiqueta + ' (' + cifra(eps.cantidad) + ' personas).',
+        pension && 'El fondo de pensiones más frecuente es ' + pension.etiqueta + ' (' + cifra(pension.cantidad) + ').',
+        arl && 'La ARL más reportada es ' + arl.etiqueta + ' (' + cifra(arl.cantidad) + ').'].filter(Boolean).join(' ');
+      uso = 'Sirve para coordinar con cada entidad. Las escrituras parecidas se agrupan («NUEVA EPS» y «Nueva EPS S.A.» cuentan juntas); se muestran las 8 principales y el resto va en «Otras». Es lo declarado por cada persona, no una consulta de afiliación.';
+    }
+    return { titulo: titulo, texto: texto, uso: uso };
+  }
+
   function cargarChart() {
     if (window.Chart) return Promise.resolve(window.Chart);
     if (cargaChart) return cargaChart;
@@ -3074,103 +3585,489 @@ var PanelTH = (function () {
     if (linea) lineas.push(linea);
     return lineas;
   }
+
+  /**
+   * Graficos del tema. Cada uno: titulo, datos, base del porcentaje, unidad,
+   * nota y forma: "barras" (horizontales), "columnas" o "dona". La dona solo
+   * se usa para repartir un todo con pocas partes; selecciones multiples y
+   * listas largas van en barras.
+   */
+  function definicionesDe(d) {
+    var o = ordenFijo(), u = d.universo;
+    var hijosNota = 'Base: ' + cifra(d.hijosTotal) + ' hijos registrados.';
+    var temas = {
+      perfil: [
+        { titulo: 'Etapas de vida', datos: ordenados(d.edad, o.edad), base: u, forma: 'columnas',
+          nota: 'Edad calculada desde la fecha de nacimiento.' },
+        { titulo: 'Distribución por género', datos: ordenados(d.genero, o.genero), forma: 'dona', orden: o.genero,
+          nota: 'Reparte a las personas de la selección.' },
+        { titulo: 'Lugar de residencia', datos: d.ciudad, base: u, forma: 'barras', nota: 'Ciudad registrada.' },
+        { titulo: 'Estado civil', datos: d.estadoCivil, base: u, forma: 'barras', nota: 'Estado civil declarado.' }
+      ],
+      formacion: [
+        { titulo: 'Nivel de formación más alto', datos: ordenados(d.nivel, o.nivel), base: u, forma: 'barras',
+          nota: 'Máximo nivel declarado por todo el personal de la selección.' },
+        { titulo: 'Formación de los docentes', datos: ordenados(d.nivelDocentes, o.nivel), base: d.docentes, forma: 'barras',
+          unidad: 'docentes', nota: 'Base: ' + cifra(d.docentes) + ' docentes. Posgrado = especialización, maestría, doctorado o posdoctorado.' },
+        { titulo: 'Estudios en curso por nivel', datos: ordenados(d.estudiosCurso, o.nivel), base: d.estudiosEnCurso, forma: 'barras',
+          unidad: 'estudios', detalle: true,
+          nota: cifra(d.personasEstudiando) + ' personas adelantan ' + cifra(d.estudiosEnCurso) + ' estudios. Base: los estudios en curso.' }
+      ],
+      bienestar: [
+        { titulo: 'Interés en actividades institucionales', datos: ordenados(d.interes, o.interes), forma: 'dona', orden: o.interes,
+          nota: '¿Le interesaría participar en actividades deportivas, culturales o recreativas?' },
+        { titulo: 'Actividades que les interesan', datos: d.actividadesInteres, base: u, forma: 'barras',
+          nota: 'Selección múltiple de quienes responden Sí o Tal vez.' },
+        { titulo: 'Deportes y actividad física', datos: d.deportes, base: u, forma: 'barras',
+          nota: 'Selección múltiple de quienes practican actividad física.' },
+        { titulo: 'Frecuencia de la actividad física', datos: ordenados(d.frecuencia, o.frecuencia), base: u, forma: 'barras',
+          nota: 'Solo quienes practican actividad física.' },
+        { titulo: 'Prácticas culturales y artísticas', datos: d.actividadesCulturales, base: u, forma: 'barras',
+          nota: 'Selección múltiple de quienes declaran práctica cultural o artística.' },
+        { titulo: 'Pasatiempos', datos: d.pasatiempos, base: u, forma: 'barras',
+          nota: 'Selección múltiple y opcional. Los textos libres van en «Otras actividades».' },
+        { titulo: 'Cumpleaños por mes', datos: d.cumpleanos || [], base: u, forma: 'columnas', ancho: true,
+          nota: 'Personas que cumplen años en cada mes. Debajo está la lista del mes elegido.' }
+      ],
+      familia: [
+        { titulo: 'Hijos por persona', datos: ordenados(d.familia, o.familia), forma: 'dona', orden: o.familia,
+          nota: 'Reparte a las personas de la selección según cuántos hijos reportan.' },
+        { titulo: 'Hijos por rango de edad', datos: ordenados(d.hijosEdad, o.hijosEdad), base: d.hijosTotal, forma: 'columnas',
+          unidad: 'hijos', detalle: true, nota: hijosNota + ' ' + cifra(d.hijosDependen) + ' dependen económicamente.' },
+        { titulo: 'Hijos y UNIMETA', datos: ordenados(d.hijosUnimeta, o.hijosUnimeta), base: d.hijosTotal, forma: 'barras',
+          unidad: 'hijos', detalle: true, nota: hijosNota + ' Estudiantes y egresados de la institución.' }
+      ],
+      seguridad: [
+        { titulo: 'EPS', datos: d.eps || [], base: u, forma: 'barras', nota: 'Entidad declarada por cada persona.' },
+        { titulo: 'Fondo de pensiones', datos: d.pensiones || [], base: u, forma: 'barras', nota: 'Fondo declarado.' },
+        { titulo: 'Fondo de cesantías', datos: d.cesantias || [], base: u, forma: 'barras', nota: 'Fondo declarado.' },
+        { titulo: 'ARL', datos: d.arl || [], base: u, forma: 'barras', nota: 'ARL declarada.' }
+      ]
+    };
+    return temas[temaAnalisis] || temas.perfil;
+  }
+
   function dibujarGraficos() {
     destruirGraficas();
     var turno = turnoDibujo, credencial = idToken, d = datosAnalisis;
     var cont = el('thGraficos');
     cont.textContent = '';
     el('thErrorGraficos').hidden = true;
-    var definiciones;
-    if (temaAnalisis === 'perfil') {
-      definiciones = [
-        ['Formación académica', ordenados(d.nivel, CONFIG_PUBLICA_SEGURA().nivelesFormacion), d.universo, 'Máximo nivel declarado por las personas de la selección.'],
-        ['Etapas de vida', ordenados(d.edad, ['18–24 años','25–34 años','35–44 años','45–54 años','55 años o más','Sin dato']), d.universo, 'Edad calculada desde el nacimiento; se usa la edad registrada si no hay fecha.', true],
-        ['Distribución por género', d.genero, d.universo, 'Categorías declaradas por las personas que respondieron.'],
-        ['Lugar de residencia', d.ciudad, d.universo, 'Ciudad registrada. Permite reconocer la concentración geográfica.']
-      ];
-    } else if (temaAnalisis === 'bienestar') {
-      definiciones = [
-        ['Deportes y actividad física', d.deportes, d.universo, 'Selección múltiple de quienes practican actividad física.'],
-        ['Prácticas culturales y artísticas', d.actividadesCulturales, d.universo, 'Selección múltiple de quienes declaran práctica cultural o artística.'],
-        ['Intereses institucionales', d.actividadesInteres, d.universo, 'Preferencias de quienes responden Sí o Tal vez a participar.'],
-        ['Pasatiempos del personal', d.pasatiempos, d.universo, 'Selección múltiple y opcional. Los textos libres se agrupan en Otras actividades.']
-      ];
-    } else {
-      definiciones = [
-        ['Hijos por persona', ordenados(d.familia, ['Sin hijos','1 hijo','2 hijos','3 hijos o más','Con hijos, sin cantidad','Sin dato']), d.universo, 'Cuenta personas por situación familiar; cada persona aparece una vez.'],
-        ['Estado civil', d.estadoCivil, d.universo, 'Estado civil declarado por las personas de la selección.']
-      ];
-    }
     var pendientes = [];
-    definiciones.forEach(function (def, indice) {
+    definicionesDe(d).forEach(function (def, indice) {
+      def.unidad = def.unidad || 'personas';
+      if (def.forma === 'dona') def.base = sumaDe(def.datos);
       var tarjeta = crear('article', 'th-tarjeta th-grafico');
-      tarjeta.appendChild(crear('h3', null, def[0]));
-      tarjeta.appendChild(crear('p', 'th-base', def[3] + ' Base porcentual: ' + cifra(def[2]) + ' participantes totales.'));
-      if (!def[1].length || !d.total) tarjeta.appendChild(crear('p', 'th-vacio', 'No hay datos para este gráfico.'));
-      else {
+      if (def.ancho) tarjeta.style.gridColumn = '1 / -1';
+      tarjeta.appendChild(crear('h3', null, def.titulo));
+      tarjeta.appendChild(crear('p', 'th-base', def.nota));
+      var sinDetalle = def.detalle && !d.detalleDisponible;
+      if (sinDetalle || !d.total || !def.datos.length || !sumaDe(def.datos)) {
+        tarjeta.appendChild(crear('p', 'th-vacio', sinDetalle
+          ? 'No fue posible leer las pestañas de hijos y estudios (PERSONAS, HIJOS y FORMACION_ACADEMICA).'
+          : 'No hay datos para este gráfico.'));
+        cont.appendChild(tarjeta);
+        return;
+      }
+      var canvas = crear('canvas');
+      canvas.id = 'thChart-' + indice;
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', def.titulo + ': ' + def.datos.map(function (x) {
+        return x.etiqueta + ', ' + x.cantidad + ' ' + def.unidad + ' (' + porcentaje(x.cantidad, def.base) + ')';
+      }).join('; '));
+      if (def.forma === 'dona') {
+        var cuerpo = crear('div', 'th-dona-cuerpo');
+        var zonaDona = crear('div', 'th-dona-lienzo');
+        zonaDona.appendChild(canvas);
+        cuerpo.appendChild(zonaDona);
+        // Leyenda con el valor de cada parte: la identidad nunca depende solo del color.
+        var leyenda = crear('ul', 'th-leyenda');
+        def.datos.forEach(function (x) {
+          var li = crear('li');
+          var muestra = crear('span', 'th-muestra');
+          muestra.style.background = colorDona(def, x.etiqueta);
+          li.appendChild(muestra);
+          li.appendChild(crear('span', null, x.etiqueta));
+          var valor = crear('span', 'th-leyenda-valor');
+          valor.appendChild(crear('b', null, cifra(x.cantidad)));
+          valor.appendChild(document.createTextNode(' · ' + porcentaje(x.cantidad, def.base)));
+          li.appendChild(valor);
+          leyenda.appendChild(li);
+        });
+        cuerpo.appendChild(leyenda);
+        tarjeta.appendChild(cuerpo);
+      } else {
         var zona = crear('div', 'th-lienzo');
-        zona.style.height = (def[4] ? 270 : Math.max(245, def[1].length * 35 + 22)) + 'px';
-        var canvas = crear('canvas');
-        canvas.id = 'thChart-' + indice;
-        canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', def[0] + ': ' + def[1].map(function (x) { return x.etiqueta + ', ' + x.cantidad + ' personas'; }).join('; '));
-        zona.appendChild(canvas); tarjeta.appendChild(zona);
-        pendientes.push({ canvas: canvas, def: def });
+        zona.style.height = (def.forma === 'columnas' ? 270 : Math.max(200, def.datos.length * 36 + 30)) + 'px';
+        zona.appendChild(canvas);
+        tarjeta.appendChild(zona);
         var detalle = crear('details', 'th-valores');
         detalle.appendChild(crear('summary', null, 'Ver datos'));
         var lista = crear('dl');
-        def[1].forEach(function (x) {
+        def.datos.forEach(function (x) {
           var fila = crear('div', 'th-valor');
           fila.appendChild(crear('dt', null, x.etiqueta));
-          fila.appendChild(crear('dd', null, cifra(x.cantidad) + ' · ' + porcentaje(x.cantidad, def[2])));
+          fila.appendChild(crear('dd', null, cifra(x.cantidad) + ' · ' + porcentaje(x.cantidad, def.base)));
           lista.appendChild(fila);
         });
-        detalle.appendChild(lista); tarjeta.appendChild(detalle);
+        detalle.appendChild(lista);
+        tarjeta.appendChild(detalle);
       }
+      pendientes.push({ canvas: canvas, def: def });
       cont.appendChild(tarjeta);
     });
     if (!pendientes.length) return;
     cargarChart().then(function (Chart) {
       if (turno !== turnoDibujo || idToken !== credencial || vistaPanel !== 'analisis' || !activo) return;
       pendientes.forEach(function (p) {
-        var def = p.def, vertical = !!def[4];
-        graficas.push(new Chart(p.canvas, {
-          type: 'bar',
-          data: { labels: def[1].map(function (x) { return partirEtiqueta(x.etiqueta); }), datasets: [{
-            data: def[1].map(function (x) { return x.cantidad; }),
-            backgroundColor: def[1].map(function (x) { return /^Sin /i.test(x.etiqueta) || /sin cantidad/i.test(x.etiqueta) ? '#c5cbd3' : '#244b70'; }),
-            borderRadius: 4, maxBarThickness: 28
-          }] },
-          options: {
-            indexAxis: vertical ? 'x' : 'y', responsive: true, maintainAspectRatio: false,
-            animation: false, locale: 'es-CO', layout: { padding: { right: vertical ? 8 : 32, top: 18 } },
-            plugins: { legend: { display: false }, tooltip: { callbacks: {
-              title: function (items) { return items.length ? def[1][items[0].dataIndex].etiqueta : ''; },
-              label: function (item) { var n = def[1][item.dataIndex].cantidad; return cifra(n) + ' personas · ' + porcentaje(n, def[2]); }
-            } } },
-            scales: {
-              x: { beginAtZero: true, grid: { display: !vertical, color: '#eef1f5' }, border: { display: false }, ticks: { precision: 0, color: '#64748b', font: { size: 11 } } },
-              y: { beginAtZero: true, grid: { display: vertical, color: '#eef1f5' }, border: { display: false }, ticks: { precision: 0, color: '#34475b', font: { size: 11 } } }
-            }
-          },
-          plugins: [{ id: 'thCantidades', afterDatasetsDraw: function (chart) {
-            var ctx = chart.ctx; ctx.save(); ctx.fillStyle = '#102a43'; ctx.font = '600 11px Arial';
-            chart.getDatasetMeta(0).data.forEach(function (barra, i) {
-              ctx.textAlign = vertical ? 'center' : 'left';
-              ctx.fillText(cifra(def[1][i].cantidad), vertical ? barra.x : barra.x + 6, vertical ? barra.y - 7 : barra.y + 4);
-            }); ctx.restore();
-          } }]
-        }));
+        graficas.push(new Chart(p.canvas, p.def.forma === 'dona' ? opcionesDona(p.def) : opcionesBarras(p.def)));
       });
     }).catch(function () {
       if (turno === turnoDibujo && idToken === credencial) el('thErrorGraficos').hidden = false;
     });
   }
+
+  function colorDona(def, etiqueta) {
+    if (esFaltante(etiqueta)) return GRIS;
+    var i = def.orden.filter(function (x) { return !esFaltante(x); }).indexOf(etiqueta);
+    return PALETA[(i < 0 ? 0 : i) % PALETA.length];
+  }
+
+  function tooltip(def) {
+    return { callbacks: {
+      title: function (items) { return items.length ? def.datos[items[0].dataIndex].etiqueta : ''; },
+      label: function (item) {
+        var n = def.datos[item.dataIndex].cantidad;
+        return cifra(n) + ' ' + def.unidad + ' · ' + porcentaje(n, def.base);
+      }
+    } };
+  }
+
+  function opcionesDona(def) {
+    return {
+      type: 'doughnut',
+      data: { labels: def.datos.map(function (x) { return x.etiqueta; }), datasets: [{
+        data: def.datos.map(function (x) { return x.cantidad; }),
+        backgroundColor: def.datos.map(function (x) { return colorDona(def, x.etiqueta); }),
+        borderColor: '#ffffff', borderWidth: 2, hoverOffset: 4
+      }] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false, cutout: '62%',
+        plugins: { legend: { display: false }, tooltip: tooltip(def) } },
+      // Total en el centro de la dona.
+      plugins: [{ id: 'thCentro', afterDraw: function (chart) {
+        var area = chart.chartArea, ctx = chart.ctx;
+        var x = (area.left + area.right) / 2, y = (area.top + area.bottom) / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#102a43'; ctx.font = '600 22px Arial';
+        ctx.fillText(cifra(def.base), x, y + 4);
+        ctx.fillStyle = '#5c6169'; ctx.font = '12px Arial';
+        ctx.fillText(def.unidad, x, y + 22);
+        ctx.restore();
+      } }]
+    };
+  }
+
+  function opcionesBarras(def) {
+    var vertical = def.forma === 'columnas';
+    return {
+      type: 'bar',
+      data: { labels: def.datos.map(function (x) { return partirEtiqueta(x.etiqueta); }), datasets: [{
+        data: def.datos.map(function (x) { return x.cantidad; }),
+        backgroundColor: def.datos.map(function (x) { return esFaltante(x.etiqueta) ? GRIS : AZUL; }),
+        borderRadius: 4, maxBarThickness: 28
+      }] },
+      options: {
+        indexAxis: vertical ? 'x' : 'y', responsive: true, maintainAspectRatio: false,
+        animation: false, locale: 'es-CO', layout: { padding: { right: vertical ? 8 : 74, top: 22 } },
+        plugins: { legend: { display: false }, tooltip: tooltip(def) },
+        scales: {
+          x: { beginAtZero: true, grid: { display: !vertical, color: '#eef1f5' }, border: { display: false }, ticks: { precision: 0, color: '#64748b', font: { size: 11 } } },
+          y: { beginAtZero: true, grid: { display: vertical, color: '#eef1f5' }, border: { display: false }, ticks: { precision: 0, color: '#34475b', font: { size: 11 } } }
+        }
+      },
+      // Cantidad y porcentaje a la vista, sin pasar el cursor.
+      plugins: [{ id: 'thCantidades', afterDatasetsDraw: function (chart) {
+        var ctx = chart.ctx; ctx.save(); ctx.fillStyle = '#102a43'; ctx.font = '600 11px Arial';
+        chart.getDatasetMeta(0).data.forEach(function (barra, i) {
+          var n = def.datos[i].cantidad;
+          if (!n) return;
+          var texto = vertical ? cifra(n) : cifra(n) + ' · ' + porcentaje(n, def.base);
+          ctx.textAlign = vertical ? 'center' : 'left';
+          ctx.fillText(texto, vertical ? barra.x : barra.x + 6, vertical ? barra.y - 7 : barra.y + 4);
+        });
+        ctx.restore();
+      } }]
+    };
+  }
+
+  /* ---------- Cumpleaños del mes ---------- */
+
+  var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto',
+    'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  var cumpleCache = {}, turnoCumple = 0, cumpleActual = null;
+
+  function prepararMeses() {
+    var select = el('thCumpleMes');
+    if (select.options.length) return;
+    MESES.forEach(function (m, i) {
+      var o = document.createElement('option');
+      o.value = String(i + 1);
+      o.textContent = m;
+      select.appendChild(o);
+    });
+    select.value = String(new Date().getMonth() + 1);
+  }
+
+  function cargarCumple() {
+    if (!idToken) return;
+    prepararMeses();
+    var mes = el('thCumpleMes').value;
+    if (cumpleCache[mes]) { pintarCumple(cumpleCache[mes]); return; }
+    var turno = ++turnoCumple, credencial = idToken;
+    el('thCumpleExcel').disabled = true;
+    el('thCumpleCuerpo').textContent = '';
+    nota('thCumpleEstado', 'Cargando los cumpleaños…');
+    pedir('panelCumpleanos', { idToken: credencial, mes: Number(mes) }).then(function (r) {
+      if (turno !== turnoCumple || idToken !== credencial) return;
+      cumpleCache[mes] = r;
+      pintarCumple(r);
+    }).catch(function (e) {
+      if (turno !== turnoCumple || idToken !== credencial) return;
+      manejarError(e, function (m) { nota('thCumpleEstado', m, true); });
+    });
+  }
+
+  function pintarCumple(r) {
+    cumpleActual = r;
+    var cuerpo = el('thCumpleCuerpo');
+    cuerpo.textContent = '';
+    r.personas.forEach(function (p) {
+      var tr = document.createElement('tr');
+      tr.appendChild(crear('td', 'th-num', String(p.dia)));
+      tr.appendChild(crear('td', null, p.nombre));
+      tr.appendChild(crear('td', null, p.vinculacion));
+      tr.appendChild(crear('td', null, p.dependencia));
+      cuerpo.appendChild(tr);
+    });
+    cuerpo.closest('.th-tabla-envoltura').hidden = !r.personas.length;
+    nota('thCumpleEstado', r.personas.length
+      ? cifra(r.personas.length) + ' persona(s) cumplen años en ' + r.nombreMes.toLowerCase() + '. Incluye a todo el personal con registro activo, sin aplicar los filtros.'
+      : 'Nadie con registro activo cumple años en ' + r.nombreMes.toLowerCase() + '.');
+    el('thCumpleExcel').disabled = !r.personas.length;
+  }
+
+  function descargarCumple() {
+    if (!cumpleActual || !cumpleActual.personas.length) return;
+    descargarBytes(generarXlsx('Cumpleaños ' + cumpleActual.nombreMes, ['Día', 'Nombre', 'Vinculación', 'Dependencia'],
+      cumpleActual.personas.map(function (p) { return [p.dia, p.nombre, p.vinculacion, p.dependencia]; })),
+      'Cumpleaños ' + cumpleActual.nombreMes + ' UNIMETA.xlsx', TIPO_XLSX);
+  }
+
   function CONFIG_PUBLICA_SEGURA() {
     return (window.CONFIG_PUBLICA && window.CONFIG_PUBLICA.catalogos) || (window.CONFIG && window.CONFIG.catalogos) || {
       nivelesFormacion: ['Bachiller', 'Técnico laboral', 'Técnico profesional', 'Tecnólogo',
         'Profesional universitario', 'Especialización', 'Maestría', 'Doctorado', 'Posdoctorado', 'Otro']
     };
+  }
+
+  /* ---------- Avance de quienes ya diligenciaron ---------- */
+
+  var ULTIMOS = 10;
+
+  /** Todo sale de lo que ya trajo panelDatos: no hace falta otra consulta. */
+  function pintarAvance() {
+    var i = indicadoresActuales || {};
+    var activas = filas.filter(function (f) { return (f.estado || ACTIVO) === ACTIVO; });
+    el('thAvTotal').textContent = cifra(activas.length);
+    el('thAvComposicion').textContent = cifra(i.administrativos) + ' administrativos · ' + cifra(i.docentes) + ' docentes' +
+      (i.anulados ? ' · ' + cifra(i.anulados) + ' anulados aparte' : '');
+    el('thAvHoy').textContent = cifra(i.hoy);
+    el('thAvSemana').textContent = cifra(i.ultimaSemana);
+    el('thAvPromedio').textContent = 'Promedio de ' +
+      (Math.round((i.ultimaSemana || 0) / 7 * 10) / 10).toLocaleString('es-CO') + ' por día';
+    el('thAvUltimo').textContent = i.ultimoRegistro || '—';
+    var ultima = activas[0];
+    el('thAvUltimoDetalle').textContent = ultima ? (ultima.nombres + ' ' + ultima.apellidos).trim() : 'Sin registros todavía';
+
+    porDia(i.porDia || []);
+    grupos(el('thAvUnidades'), agrupar(activas, 'unidad'), activas.length, true);
+    grupos(el('thAvVinculaciones'), agrupar(activas, 'vinculacion'), activas.length, false);
+    ultimosRegistros(activas.slice(0, ULTIMOS));
+  }
+
+  /** [{etiqueta, cantidad, detalle:[{etiqueta, cantidad}]}], de mayor a menor. */
+  function agrupar(lista, campo) {
+    var mapa = {};
+    lista.forEach(function (f) {
+      var clave = f[campo] || 'Sin dato';
+      var g = mapa[clave] = mapa[clave] || { etiqueta: clave, cantidad: 0, deps: {} };
+      g.cantidad++;
+      var dep = f.dependencia || 'Sin dependencia';
+      g.deps[dep] = (g.deps[dep] || 0) + 1;
+    });
+    var orden = function (a, b) { return b.cantidad - a.cantidad || a.etiqueta.localeCompare(b.etiqueta, 'es'); };
+    return Object.keys(mapa).map(function (k) {
+      var g = mapa[k];
+      g.detalle = Object.keys(g.deps).map(function (d) { return { etiqueta: d, cantidad: g.deps[d] }; }).sort(orden);
+      return g;
+    }).sort(orden);
+  }
+
+  /** Una fila por grupo con su cantidad, su parte del total y una barra. */
+  function grupos(lista, datos, total, conDetalle) {
+    lista.textContent = '';
+    if (!datos.length) { lista.appendChild(crear('li', 'th-vacio', 'Sin registros todavía.')); return; }
+    var maximo = datos[0].cantidad;
+    datos.forEach(function (g) {
+      var li = crear('li', 'th-grupo');
+      var nombre;
+      if (conDetalle && g.etiqueta !== 'Sin dato') {
+        nombre = crear('button', 'th-enlace th-grupo-nombre', g.etiqueta);
+        nombre.type = 'button';
+        nombre.setAttribute('aria-label', 'Ver los ' + g.cantidad + ' registros de ' + g.etiqueta);
+        nombre.addEventListener('click', function () { verRegistrosDe(g.etiqueta); });
+      } else {
+        nombre = crear('span', 'th-grupo-nombre', g.etiqueta);
+      }
+      li.appendChild(nombre);
+      var cifras = crear('span', 'th-grupo-cifra');
+      cifras.appendChild(crear('b', null, cifra(g.cantidad)));
+      cifras.appendChild(document.createTextNode(' · ' + porcentaje(g.cantidad, total)));
+      li.appendChild(cifras);
+      var riel = crear('div', 'th-riel');
+      riel.setAttribute('aria-hidden', 'true');
+      var relleno = crear('span');
+      relleno.style.width = (maximo ? g.cantidad / maximo * 100 : 0) + '%';
+      riel.appendChild(relleno);
+      li.appendChild(riel);
+      if (conDetalle && g.detalle.length) {
+        var detalle = crear('details');
+        detalle.appendChild(crear('summary', null, 'Dependencias (' + g.detalle.length + ')'));
+        var ul = crear('ul');
+        g.detalle.forEach(function (d) {
+          var item = crear('li');
+          item.appendChild(crear('span', null, d.etiqueta));
+          item.appendChild(crear('span', null, cifra(d.cantidad)));
+          ul.appendChild(item);
+        });
+        detalle.appendChild(ul);
+        li.appendChild(detalle);
+      }
+      lista.appendChild(li);
+    });
+  }
+
+  /** Columnas por dia. Con muchos dias, solo algunas fechas llevan rotulo. */
+  function porDia(dias) {
+    var barras = el('thAvDias'), etiquetas = el('thAvDiasEtiquetas'), valores = el('thAvDiasValores');
+    barras.textContent = ''; etiquetas.textContent = ''; valores.textContent = '';
+    var maximo = dias.reduce(function (m, d) { return Math.max(m, d.cantidad); }, 0);
+    var cada = dias.length > 31 ? 7 : dias.length > 14 ? 2 : 1;
+    dias.forEach(function (d, n) {
+      var col = crear('div', 'th-dia');
+      col.title = d.etiqueta + ': ' + d.cantidad + ' registro(s)';
+      if (dias.length <= 31 && d.cantidad) col.appendChild(crear('span', 'th-dia-cifra', cifra(d.cantidad)));
+      var barra = crear('div', 'th-dia-barra' + (d.cantidad ? '' : ' cero'));
+      barra.style.height = (maximo ? Math.max(2, d.cantidad / maximo * 100) : 2) + '%';
+      col.appendChild(barra);
+      barras.appendChild(col);
+      var esUltimo = n === dias.length - 1;
+      var rotulo = esUltimo ? 'Hoy' : (n % cada === 0 && dias.length - 1 - n >= cada ? d.etiqueta : '');
+      etiquetas.appendChild(crear('span', null, rotulo));
+      var fila = crear('div', 'th-valor');
+      fila.appendChild(crear('dt', null, d.etiqueta));
+      fila.appendChild(crear('dd', null, cifra(d.cantidad)));
+      valores.appendChild(fila);
+    });
+    var total = dias.reduce(function (s, d) { return s + d.cantidad; }, 0);
+    el('thAvDiasBase').textContent = dias.length
+      ? cifra(total) + ' registro(s) vigentes en los últimos ' + dias.length + ' días, desde el ' + dias[0].etiqueta +
+        (maximo ? '. El día con más registros tuvo ' + cifra(maximo) + '.' : '.')
+      : '';
+  }
+
+  function ultimosRegistros(lista) {
+    var cuerpo = el('thAvUltimos');
+    cuerpo.textContent = '';
+    lista.forEach(function (f) {
+      var nombre = (f.nombres + ' ' + f.apellidos).trim();
+      var tr = document.createElement('tr');
+      tr.appendChild(crear('td', 'th-num', f.fecha));
+      tr.appendChild(crear('td', null, nombre));
+      tr.appendChild(crear('td', null, f.vinculacion));
+      tr.appendChild(crear('td', null, f.dependencia || f.unidad));
+      var td = document.createElement('td');
+      var ver = crear('button', 'th-ver', 'Ver ficha');
+      ver.type = 'button';
+      ver.setAttribute('aria-label', 'Ver ficha de ' + nombre);
+      ver.addEventListener('click', function () { abrirFicha(f, ver); });
+      td.appendChild(ver);
+      tr.appendChild(td);
+      cuerpo.appendChild(tr);
+    });
+    el('thAvVacio').hidden = lista.length > 0;
+    cuerpo.closest('.th-tabla-envoltura').hidden = !lista.length;
+  }
+
+  /** Pasa a Registros con la unidad ya filtrada. */
+  function verRegistrosDe(unidad) {
+    el('thBuscar').value = '';
+    el('thFiltroVinculacion').value = '';
+    el('thFiltroEstado').value = ACTIVO;
+    el('thFiltroUnidad').value = unidad;
+    aplicarFiltros();
+    cambiarVista('registros');
+    el('thTabRegistros').focus();
+  }
+
+  /* ---------- Descargas ---------- */
+
+  function limitesPanel() {
+    return (window.CONFIG_PUBLICA && window.CONFIG_PUBLICA.limites) || (window.CONFIG && window.CONFIG.limites) || {};
+  }
+  function hoyArchivo() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function nota(id, texto, esError) {
+    var n = el(id);
+    n.textContent = texto || '';
+    n.classList.toggle('error', !!esError);
+  }
+  function descargarBytes(bytes, nombre, tipo) {
+    var url = URL.createObjectURL(new Blob([bytes], { type: tipo }));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+
+  /** La tabla tal como está filtrada, con todas las columnas de CONSOLIDADO. */
+  function exportarRegistros() {
+    if (!filtradas.length || !idToken) return;
+    var limite = limitesPanel().maxFilasExportacion || 3000;
+    if (filtradas.length > limite) {
+      nota('thExportarEstado', 'Puede descargar hasta ' + cifra(limite) + ' registros a la vez. Use los filtros para dividir la descarga.', true);
+      return;
+    }
+    var boton = el('thExportar'), credencial = idToken;
+    boton.disabled = true;
+    nota('thExportarEstado', 'Preparando el archivo…');
+    pedir('panelExportar', { idToken: credencial, radicados: filtradas.map(function (f) { return f.radicado; }) })
+      .then(function (d) {
+        if (idToken !== credencial) return;
+        descargarBytes(generarXlsx('Registros', d.encabezados, d.filas),
+          'Registros UNIMETA - ' + hoyArchivo() + '.xlsx', TIPO_XLSX);
+        nota('thExportarEstado', cifra(d.filas.length) + ' registro(s) descargados.');
+      })
+      .catch(function (e) {
+        manejarError(e, function (m) { nota('thExportarEstado', m, true); });
+      })
+      .then(function () { boton.disabled = !filtradas.length; });
   }
 
   /* ---------- Tabla y filtros ---------- */
@@ -3206,7 +4103,9 @@ var PanelTH = (function () {
     var qDoc = soloDocumento(el('thBuscar').value);
     var vinc = el('thFiltroVinculacion').value;
     var unidad = el('thFiltroUnidad').value;
+    var estado = el('thFiltroEstado').value;
     filtradas = filas.filter(function (f) {
+      if (estado && (f.estado || ACTIVO) !== estado) return false;
       if (vinc && f.vinculacion !== vinc) return false;
       if (unidad && f.unidad !== unidad) return false;
       if (!q) return true;
@@ -3226,9 +4125,13 @@ var PanelTH = (function () {
 
     filtradas.slice(inicio, inicio + POR_PAGINA).forEach(function (f) {
       var nombre = (f.nombres + ' ' + f.apellidos).trim();
+      var anulado = f.estado === ANULADO;
       var tr = document.createElement('tr');
+      if (anulado) tr.className = 'anulado';
       tr.appendChild(crear('td', 'th-num', f.documento));
-      tr.appendChild(crear('td', null, nombre));
+      var celdaNombre = crear('td', null, nombre);
+      if (anulado) celdaNombre.appendChild(crear('span', 'th-etiqueta', 'Anulado'));
+      tr.appendChild(celdaNombre);
       tr.appendChild(crear('td', null, f.vinculacion));
       tr.appendChild(crear('td', null, f.unidad));
       tr.appendChild(crear('td', null, f.dependencia));
@@ -3249,6 +4152,10 @@ var PanelTH = (function () {
       ? 'Aún nadie ha diligenciado el formulario.'
       : 'Ningún registro coincide con la búsqueda. Revise el número o quite los filtros.';
     el('thContador').textContent = filtradas.length + ' de ' + filas.length + ' registros';
+    var exportar = el('thExportar');
+    exportar.textContent = 'Descargar Excel (' + cifra(filtradas.length) + ')';
+    exportar.disabled = !filtradas.length;
+    exportar.setAttribute('aria-label', 'Descargar en Excel los ' + filtradas.length + ' registros filtrados');
     el('thInfoPagina').textContent = filtradas.length ? 'Página ' + pagina + ' de ' + paginas : '';
     el('thAnterior').disabled = pagina <= 1;
     el('thSiguiente').disabled = pagina >= paginas;
@@ -3259,16 +4166,17 @@ var PanelTH = (function () {
   function abrirFicha(fila, boton) {
     botonOrigen = boton || null;
     fichaActual = null;
+    fichaFila = fila;
     var turno = ++turnoFicha;
     el('thFichaNombre').textContent = (fila.nombres + ' ' + fila.apellidos).trim();
     el('thFichaRadicado').textContent = 'Radicado ' + fila.radicado + ' · Documento ' + fila.documento;
-    var chips = el('thFichaChips');
-    chips.textContent = '';
-    [fila.vinculacion, fila.dependencia || fila.unidad, fila.fecha && 'Registrado el ' + fila.fecha]
-      .filter(Boolean).forEach(function (t) { chips.appendChild(crear('li', null, t)); });
+    chipsFicha(fila);
     el('thSecciones').textContent = '';
     el('thPdf').disabled = true;
     el('thImprimir').disabled = true;
+    el('thAnular').hidden = true;
+    el('thAnularAbrir').hidden = fila.estado === ANULADO;
+    el('thAnularAbrir').disabled = true;
     var estado = el('thFichaEstado');
     estado.hidden = false;
     estado.className = 'th-estado';
@@ -3285,6 +4193,7 @@ var PanelTH = (function () {
       estado.hidden = true;
       el('thPdf').disabled = false;
       el('thImprimir').disabled = false;
+      el('thAnularAbrir').disabled = false;
     }).catch(function (e) {
       if (turno !== turnoFicha) return;
       manejarError(e, function (m) {
@@ -3295,18 +4204,110 @@ var PanelTH = (function () {
     });
   }
 
+  function chipsFicha(fila) {
+    var chips = el('thFichaChips');
+    chips.textContent = '';
+    if (fila.estado === ANULADO) chips.appendChild(crear('li', 'anulado', 'Anulado'));
+    [fila.vinculacion, fila.dependencia || fila.unidad, fila.fecha && 'Registrado el ' + fila.fecha]
+      .filter(Boolean).forEach(function (t) { chips.appendChild(crear('li', null, t)); });
+  }
+
   function cerrarFicha() {
     turnoFicha++;
     fichaActual = null;
+    fichaFila = null;
+    el('thAnular').hidden = true;
     el('thFondoFicha').hidden = true;
     document.documentElement.style.overflow = '';
     if (botonOrigen && document.body.contains(botonOrigen)) botonOrigen.focus();
   }
 
-  /** Con la ficha abierta, el tabulador recorre solo sus botones. */
+  /* ---------- Anular y reenviar ---------- */
+
+  function minimoMotivo() { return limitesPanel().minMotivoAnulacion || 10; }
+
+  function abrirAnulacion() {
+    if (!fichaFila || fichaFila.estado === ANULADO) return;
+    el('thAnularFormulario').hidden = false;
+    el('thAnularHecho').hidden = true;
+    el('thAnular').className = 'th-anular';
+    el('thAnularMotivo').value = '';
+    nota('thAnularError', '');
+    contarMotivo();
+    el('thAnular').hidden = false;
+    el('thAnularAbrir').disabled = true;
+    el('thAnular').closest('.th-ficha-cuerpo').scrollTop = 0;
+    el('thAnularMotivo').focus();
+  }
+
+  function cancelarAnulacion() {
+    el('thAnular').hidden = true;
+    el('thAnularAbrir').disabled = false;
+    el('thAnularAbrir').focus();
+  }
+
+  function contarMotivo() {
+    var n = el('thAnularMotivo').value.trim().length, min = minimoMotivo();
+    el('thAnularContador').textContent = n + ' de 300 caracteres' +
+      (n < min ? ' · mínimo ' + min : '');
+    if (n >= min) nota('thAnularError', '');
+  }
+
+  function confirmarAnulacion() {
+    var motivo = el('thAnularMotivo').value.trim();
+    if (motivo.length < minimoMotivo()) {
+      nota('thAnularError', 'Escriba el motivo de la anulación (al menos ' + minimoMotivo() + ' caracteres).', true);
+      el('thAnularMotivo').focus();
+      return;
+    }
+    var fila = fichaFila, turno = turnoFicha;
+    var confirmar = el('thAnularConfirmar'), cancelar = el('thAnularCancelar');
+    confirmar.disabled = cancelar.disabled = true;
+    confirmar.textContent = 'Anulando…';
+    nota('thAnularError', '');
+    pedir('panelAnular', { idToken: idToken, radicado: fila.radicado, motivo: motivo }).then(function (r) {
+      fila.estado = ANULADO;
+      refrescarTrasCambio();
+      if (turno !== turnoFicha) return;
+      chipsFicha(fila);
+      el('thAnularAbrir').hidden = true;
+      el('thAnularFormulario').hidden = true;
+      el('thAnular').className = 'th-anular hecho';
+      el('thAnularHechoTexto').textContent = (r.nombre || 'La persona') +
+        ' ya puede diligenciar de nuevo el formulario con el mismo documento. ' +
+        (r.correo ? 'Avísele con el enlace de abajo; el mensaje ya trae la dirección del formulario.'
+                  : 'No hay un correo registrado: avísele por otro medio.') +
+        (r.aviso ? ' ' + r.aviso : '');
+      var enlace = el('thAnularCorreo');
+      enlace.hidden = !r.correo;
+      if (r.correo) enlace.href = correoReenvio(r, fila.radicado);
+      el('thAnularHecho').hidden = false;
+      el('thAnularHechoTitulo').focus();
+    }).catch(function (e) {
+      if (turno !== turnoFicha) return;
+      manejarError(e, function (m) { nota('thAnularError', m, true); });
+    }).then(function () {
+      confirmar.disabled = cancelar.disabled = false;
+      confirmar.textContent = 'Confirmar anulación';
+    });
+  }
+
+  /** Mensaje listo para la persona, con la dirección del formulario. */
+  function correoReenvio(r, radicado) {
+    var cuerpo = 'Buen día' + (r.nombre ? ', ' + r.nombre : '') + ':\n\n' +
+      'Anulamos su registro ' + radicado + ' del formulario de actualización de datos para que pueda ' +
+      'corregir la información. Por favor diligéncielo de nuevo' +
+      (r.urlFormulario ? ' en:\n' + r.urlFormulario : '.') + '\n\n' +
+      'Gracias,\nTalento Humano - UNIMETA';
+    return 'mailto:' + encodeURIComponent(r.correo) +
+      '?subject=' + encodeURIComponent('Actualización de datos UNIMETA: diligencie de nuevo el formulario') +
+      '&body=' + encodeURIComponent(cuerpo);
+  }
+
+  /** Con la ficha abierta, el tabulador recorre solo sus controles. */
   function mantenerFoco(e) {
     if (e.key !== 'Tab' || el('thFondoFicha').hidden) return;
-    var botones = Array.prototype.filter.call(el('thFicha').querySelectorAll('button'), function (b) {
+    var botones = Array.prototype.filter.call(el('thFicha').querySelectorAll('button, textarea, a[href]'), function (b) {
       return !b.disabled && b.offsetParent !== null;
     });
     if (!botones.length) return;
@@ -3343,15 +4344,7 @@ var PanelTH = (function () {
     if (!fichaActual) return;
     var datos = { radicado: fichaActual.radicado, fecha: fichaActual.fecha,
                   correo: fichaActual.correo, secciones: fichaActual.secciones };
-    var archivo = new Blob([generarPdfRegistro(datos)], { type: 'application/pdf' });
-    var url = URL.createObjectURL(archivo);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = nombreArchivoRegistro(fichaActual);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    descargarBytes(generarPdfRegistro(datos), nombreArchivoRegistro(fichaActual), 'application/pdf');
   }
 
   /** Usa la misma hoja de impresion del formulario (#constanciaImpresion). */
@@ -3379,17 +4372,36 @@ var PanelTH = (function () {
     });
     el('thIrFormulario').addEventListener('click', irAlFormulario);
     el('thSalir').addEventListener('click', cerrarSesion);
-    el('thReintentar').addEventListener('click', cargar);
-    ['Analisis', 'Registros'].forEach(function (n) {
+    el('thReintentar').addEventListener('click', function () { cargar(false); });
+    VISTAS.forEach(function (n, i) {
       el('thTab' + n).addEventListener('click', function () { cambiarVista(n.toLowerCase()); });
       el('thTab' + n).addEventListener('keydown', function (e) {
-        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) === -1) return;
+        var destino = { ArrowRight: (i + 1) % VISTAS.length, ArrowLeft: (i + VISTAS.length - 1) % VISTAS.length,
+                        Home: 0, End: VISTAS.length - 1 }[e.key];
+        if (destino === undefined) return;
         e.preventDefault();
-        var siguiente = e.key === 'Home' ? 'Analisis' : e.key === 'End' ? 'Registros' : n === 'Analisis' ? 'Registros' : 'Analisis';
-        cambiarVista(siguiente.toLowerCase()); el('thTab' + siguiente).focus();
+        cambiarVista(VISTAS[destino].toLowerCase()); el('thTab' + VISTAS[destino]).focus();
       });
     });
+    el('thAvVerTodos').addEventListener('click', function () {
+      el('thFiltroUnidad').value = '';
+      aplicarFiltros();
+      cambiarVista('registros');
+      el('thTabRegistros').focus();
+    });
+    // Registros y ficha
+    el('thExportar').addEventListener('click', exportarRegistros);
+    el('thFiltroEstado').addEventListener('change', aplicarFiltros);
+    el('thAnularAbrir').addEventListener('click', abrirAnulacion);
+    el('thAnularCancelar').addEventListener('click', cancelarAnulacion);
+    el('thAnularConfirmar').addEventListener('click', confirmarAnulacion);
+    el('thAnularMotivo').addEventListener('input', contarMotivo);
     el('thFiltrosAnalisis').addEventListener('submit', function (e) { e.preventDefault(); cargarAnalisis(); });
+    // Los filtros se aplican al cambiarlos.
+    el('thAnalisisVinculacion').addEventListener('change', cargarAnalisis);
+    el('thAnalisisUnidad').addEventListener('change', cargarAnalisis);
+    el('thCumpleMes').addEventListener('change', cargarCumple);
+    el('thCumpleExcel').addEventListener('click', descargarCumple);
     el('thAnalisisLimpiar').addEventListener('click', function () {
       el('thAnalisisUnidad').value = ''; el('thAnalisisVinculacion').value = ''; cargarAnalisis();
     });
@@ -3405,6 +4417,7 @@ var PanelTH = (function () {
       el('thBuscar').value = '';
       el('thFiltroVinculacion').value = '';
       el('thFiltroUnidad').value = '';
+      el('thFiltroEstado').value = ACTIVO;
       aplicarFiltros();
       el('thBuscar').focus();
     });
@@ -3431,7 +4444,7 @@ var PanelTH = (function () {
 </script>
 
 <script>window.URL_SERVIDOR = "https://script.google.com/macros/s/AKfycbw7h5je56SzVEgpRmNRcxuDon-mD9MjVuImIXQnKWSIjCkxAhOF1rt1FewUT9lgqIWbtg/exec";
-window.CONFIG_PUBLICA = {"textos":{"titulo":"Actualización de Datos del Personal","institucion":"Corporación Universitaria del Meta - UNIMETA","introduccion":"La Corporación Universitaria del Meta - UNIMETA está actualizando la información personal, familiar, laboral y académica de su personal administrativo y docente. Los datos se utilizan para la gestión del talento humano, la planeación de actividades de bienestar y el cumplimiento de obligaciones legales y de seguridad social. El diligenciamiento toma aproximadamente 10 minutos.","autorizacion":"Mediante el registro de sus datos personales en el presente formulario usted autoriza a la Corporación Universitaria del Meta – UNIMETA para la recolección, almacenamiento y uso de sus datos con la finalidad de hacer uso de los mismos para actividades institucionales académicas y/o administrativas relacionadas con el objeto social de la Institución. Como Titular de la información tiene derecho a conocer, actualizar y rectificar sus datos personales, solicitar prueba de la autorización otorgada para su tratamiento, ser informado sobre el uso que se ha dado a los mismos, presentar quejas ante la Superintendencia de Industria y Comercio - SIC por infracción a la ley, revocar la autorización y/o solicitar la supresión de sus datos en los casos en que sea procedente y acceder en forma gratuita a los mismos. La Corporación Universitaria del Meta – UNIMETA se encuentra ubicada en la Carrera 33 No.34 - 06, en la ciudad de Villavicencio. Para ejercer sus derechos como titular de la información utilice nuestro canal de atención secretariageneral@unimeta.edu.co.","opcionAcepta":"Sí, acepto","opcionNoAcepta":"No acepto","confirmacionFinal":"Confirmo que revisé la información registrada y que es correcta.","finalRotulo":"Formulario enviado","finalTitulo":"Su información quedó registrada","finalMensaje":"Guardamos su registro en la hoja de vida institucional. Si hace falta algún dato, le escribiremos al correo que indicó.","finalPasos":[{"texto":"Recibirá una copia de su registro en el correo personal que indicó."},{"texto":"Para corregir un dato después del envío, escriba a {correo}.","correo":"talentohumano@unimeta.edu.co"}],"finalNota":"Ya puede cerrar esta pestaña. El formulario admite un solo envío por persona.","correoRemitente":"Actualización de Datos - UNIMETA","correoAsunto":"Copia de su registro de actualización de datos","correoIntroduccion":"Esta es la copia de la información que registró. Consérvela como constancia y revísela: el formulario admite un solo envío por persona.","correoCierre":"Si encuentra algún dato equivocado, escriba a"},"catalogos":{"tiposVinculacion":["Administrativo","Docente"],"tiposDocumento":["Cédula de ciudadanía","Cédula de extranjería","Pasaporte","Permiso por Protección Temporal","Otro"],"estadosCiviles":["Soltero(a)","Casado(a)","Unión libre","Separado(a)","Divorciado(a)","Viudo(a)","Prefiero no responder"],"ocupacionesConyuge":["Empleado(a)","Independiente","Empresario(a)","Estudiante","Labores del hogar","Desempleado(a)","Pensionado(a)","Otra"],"parentescos":["Cónyuge o compañero(a) permanente","Padre","Madre","Hijo(a)","Hermano(a)","Abuelo(a)","Tio(a)","Primo(a)","Amigo(a)","Otro"],"fondosCesantias":["Porvenir","Proteccion","Colfondos","Skandia","FNA - Fondo Nacional del Ahorro","Otro"],"arls":["ARL Sura","Positiva Compañía de Seguros","Colmena Seguros","Seguros Bolívar","Liberty Seguros","Axa Colpatria","La Equidad Seguros","Mapfre Seguros","Otra"],"pasatiempos":["Lectura","Música","Cine o series","Viajes","Cocina","Baile","Arte","Videojuegos","Actividades al aire libre","Voluntariado","Manualidades","Otro"],"deportes":["Futbol","Microfutbol","Baloncesto","Voleibol","Natacion","Ciclismo","Atletismo o trote","Gimnasio","Tenis","Tenis de mesa","Yoga o pilates","Artes marciales","Caminata o senderismo","Otro"],"actividadesCulturales":["Danza o baile","Canto","Interpretación de instrumentos musicales","Teatro","Pintura o dibujo","Fotografía","Escritura o literatura","Artesanías o manualidades","Otra"],"frecuenciasDeporte":["Ocasionalmente","Una o dos veces por semana","Tres o cuatro veces por semana","Cinco o más veces por semana"],"interesActividades":["Si","No","Tal vez"],"actividadesInteres":["Deportivas","Culturales","Recreativas","Artisticas","Formativas o de capacitación","Voluntariado y proyección social"],"nivelesFormacion":["Bachiller","Técnico laboral","Técnico profesional","Tecnólogo","Profesional universitario","Especialización","Maestría","Doctorado","Posdoctorado","Otro"],"tiposInstitucion":["Colegio","Institución técnica o tecnológica","Institución de educación superior"],"estadosEstudio":["Graduado","En curso","Incompleto"],"ciudades":["Abejorral","Ábrego","Abriaquí","Acacías","Acandí","Acevedo","Achí","Agrado","Agua de Dios","Aguachica","Aguada","Aguadas","Aguazul","Agustín Codazzi","Aipe","Albán","Albania","Alcalá","Aldana","Alejandría","Algarrobo","Algeciras","Almaguer","Almeida","Alpujarra","Altamira","Alto Baudó","Altos del Rosario","Alvarado","Amagá","Amalfi","Ambalema","Anapoima","Ancuya","Andalucía","Andes","Angelópolis","Angostura","Anolaima","Anorí","Anserma","Ansermanuevo","Anzá","Anzoátegui","Apartadó","Apía","Apulo","Aquitania","Aracataca","Aranzazu","Aratoca","Arauca","Arauquita","Arbeláez","Arboleda","Arboledas","Arboletes","Arcabuco","Arenal","Argelia","Ariguaní","Arjona","Armenia","Armero","Arroyohondo","Astrea","Ataco","Atrato","Ayapel","Bagadó","Bahía Solano","Bajo Baudó","Balboa","Baranoa","Baraya","Barbacoas","Barbosa","Barichara","Barranca de Upía","Barrancabermeja","Barrancas","Barranco de Loba","Barrancominas","Barranquilla","Becerril","Belalcázar","Belén","Belén de los Andaquíes","Belén de Umbría","Bello","Belmira","Beltrán","Berbeo","Betania","Betéitiva","Betulia","Bituima","Boavita","Bochalema","Bogotá, D.C.","Bojacá","Bojayá","Bolívar","Bosconia","Boyacá","Briceño","Bucaramanga","Bucarasica","Buenaventura","Buenavista","Buenos Aires","Buesaco","Bugalagrande","Buriticá","Busbanzá","Cabrera","Cabuyaro","Cacahual","Cáceres","Cachipay","Cáchira","Cácota","Caicedo","Caicedonia","Caimito","Cajamarca","Cajibío","Cajicá","Calamar","Calarcá","Caldas","Caldono","California","Calima","Caloto","Campamento","Campo de la Cruz","Campoalegre","Campohermoso","Canalete","Candelaria","Cantagallo","Cañasgordas","Caparrapí","Capitanejo","Cáqueza","Caracolí","Caramanta","Carcasí","Carepa","Carmen de Apicalá","Carmen de Carupa","Carmen del Darién","Carolina","Cartagena de Indias","Cartagena del Chairá","Cartago","Carurú","Casabianca","Castilla la Nueva","Caucasia","Cepitá","Cereté","Cerinza","Cerrito","Cerro de San Antonio","Cértegui","Chachagüí","Chaguaní","Chalán","Chámeza","Chaparral","Charalá","Charta","Chía","Chigorodó","Chima","Chimá","Chimichagua","Chinácota","Chinavita","Chinchiná","Chinú","Chipaque","Chipatá","Chiquinquirá","Chíquiza","Chiriguaná","Chiscas","Chita","Chitagá","Chitaraque","Chivatá","Chivolo","Chivor","Choachí","Chocontá","Cicuco","Ciénaga","Ciénaga de Oro","Ciénega","Cimitarra","Circasia","Cisneros","Ciudad Bolívar","Clemencia","Cocorná","Coello","Cogua","Colombia","Colón","Colosó","Cómbita","Concepción","Concordia","Condoto","Confines","Consacá","Contadero","Contratación","Convención","Copacabana","Coper","Córdoba","Corinto","Coromoro","Corozal","Corrales","Cota","Cotorra","Covarachía","Coveñas","Coyaima","Cravo Norte","Cuaspud Carlosama","Cubará","Cubarral","Cucaita","Cucunubá","Cucutilla","Cuítiva","Cumaral","Cumaribo","Cumbal","Cumbitara","Cunday","Curillo","Curití","Curumaní","Dabeiba","Dagua","Dibulla","Distracción","Dolores","Donmatías","Dosquebradas","Duitama","Durania","Ebéjico","El Águila","El Bagre","El Banco","El Cairo","El Calvario","El Cantón del San Pablo","El Carmen","El Carmen de Atrato","El Carmen de Bolívar","El Carmen de Chucurí","El Carmen de Viboral","El Castillo","El Cerrito","El Charco","El Cocuy","El Colegio","El Copey","El Doncello","El Dorado","El Dovio","El Encanto","El Espino","El Guacamayo","El Guamo","El Litoral del San Juan","El Molino","El Paso","El Paujíl","El Peñol","El Peñón","El Piñón","El Playón","El Retén","El Retorno","El Roble","El Rosal","El Rosario","El Santuario","El Tablón de Gómez","El Tambo","El Tarra","El Zulia","Elías","Encino","Enciso","Entrerríos","Envigado","Espinal","Facatativá","Falan","Filadelfia","Filandia","Firavitoba","Flandes","Florencia","Floresta","Florián","Florida","Floridablanca","Fómeque","Fonseca","Fortul","Fosca","Francisco Pizarro","Fredonia","Fresno","Frontino","Fuente de Oro","Fundación","Funes","Funza","Fúquene","Fusagasugá","Gachalá","Gachancipá","Gachantivá","Gachetá","Galán","Galapa","Galeras","Gama","Gamarra","Gámbita","Gámeza","Garagoa","Garzón","Génova","Gigante","Ginebra","Giraldo","Girardot","Girardota","Girón","Gómez Plata","González","Gramalote","Granada","Guaca","Guacamayas","Guacarí","Guachené","Guachetá","Guachucal","Guadalajara de Buga","Guadalupe","Guaduas","Guaitarilla","Gualmatán","Guamal","Guamo","Guapi","Guapotá","Guaranda","Guarne","Guasca","Guatapé","Guataquí","Guatavita","Guateque","Guática","Guavatá","Guayabal de Síquima","Guayabetal","Guayatá","Güepsa","Güicán de la Sierra","Gutiérrez","Hacarí","Hatillo de Loba","Hato","Hato Corozal","Hatonuevo","Heliconia","Herrán","Herveo","Hispania","Hobo","Honda","Ibagué","Icononzo","Iles","Imués","Inírida","Inzá","Ipiales","Íquira","Isnos","Istmina","Itagüí","Ituango","Iza","Jambaló","Jamundí","Jardín","Jenesano","Jericó","Jerusalén","Jesús María","Jordán","Juan de Acosta","Junín","Juradó","La Apartada","La Argentina","La Belleza","La Calera","La Capilla","La Ceja","La Celia","La Chorrera","La Cruz","La Cumbre","La Dorada","La Esperanza","La Estrella","La Florida","La Gloria","La Guadalupe","La Jagua de Ibirico","La Jagua del Pilar","La Llanada","La Macarena","La Merced","La Mesa","La Montañita","La Palma","La Paz","La Pedrera","La Peña","La Pintada","La Plata","La Playa","La Primavera","La Salina","La Sierra","La Tebaida","La Tola","La Unión","La Uvita","La Vega","La Victoria","La Virginia","Labateca","Labranzagrande","Landázuri","Lebrija","Leiva","Lejanías","Lenguazaque","Lérida","Leticia","Líbano","Liborina","Linares","Lloró","López de Micay","Lorica","Los Andes","Los Córdobas","Los Palmitos","Los Patios","Los Santos","Lourdes","Luruaco","Macanal","Macaravita","Maceo","Machetá","Madrid","Magangué","Magüí","Mahates","Maicao","Majagual","Málaga","Malambo","Mallama","Manatí","Manaure","Manaure Balcón del Cesar","Maní","Manizales","Manta","Manzanares","Mapiripán","Margarita","María la Baja","Marinilla","Maripí","Marmato","Marquetalia","Marsella","Marulanda","Matanza","Medellín","Medina","Medio Atrato","Medio Baudó","Medio San Juan","Melgar","Mercaderes","Mesetas","Milán","Miraflores","Miranda","Mirití - Paraná","Mistrató","Mitú","Mocoa","Mogotes","Molagavita","Momil","Mongua","Monguí","Moniquirá","Montebello","Montecristo","Montelíbano","Montenegro","Montería","Monterrey","Moñitos","Morales","Morelia","Morichal","Morroa","Mosquera","Motavita","Murillo","Murindó","Mutatá","Mutiscua","Muzo","Nariño","Nátaga","Natagaima","Nechí","Necoclí","Neira","Neiva","Nemocón","Nilo","Nimaima","Nobsa","Nocaima","Norcasia","Norosí","Nóvita","Nueva Granada","Nuevo Belén de Bajirá","Nuevo Colón","Nunchía","Nuquí","Obando","Ocamonte","Ocaña","Oiba","Oicatá","Olaya","Olaya Herrera","Onzaga","Oporapa","Orito","Orocué","Ortega","Ospina","Otanche","Ovejas","Pachavita","Pacho","Pacoa","Pácora","Padilla","Páez","Paicol","Pailitas","Paime","Paipa","Pajarito","Palermo","Palestina","Palmar","Palmar de Varela","Palmas del Socorro","Palmira","Palmito","Palocabildo","Pamplona","Pamplonita","Pana Pana","Pandi","Panqueba","Papunahua","Páramo","Paratebueno","Pasca","Pasto","Patía","Pauna","Paya","Paz de Ariporo","Paz de Río","Pedraza","Pelaya","Pensilvania","Peñol","Peque","Pereira","Pesca","Piamonte","Piedecuesta","Piedras","Piendamó - Tunía","Pijao","Pijiño del Carmen","Pinchote","Pinillos","Piojó","Pisba","Pital","Pitalito","Pivijay","Planadas","Planeta Rica","Plato","Policarpa","Polonuevo","Ponedera","Popayán","Pore","Potosí","Pradera","Prado","Providencia","Pueblo Bello","Pueblo Nuevo","Pueblo Rico","Pueblorrico","Puebloviejo","Puente Nacional","Puerres","Puerto Alegría","Puerto Arica","Puerto Asís","Puerto Berrío","Puerto Boyacá","Puerto Caicedo","Puerto Carreño","Puerto Colombia","Puerto Concordia","Puerto Escondido","Puerto Gaitán","Puerto Guzmán","Puerto Leguízamo","Puerto Libertador","Puerto Lleras","Puerto López","Puerto Nare","Puerto Nariño","Puerto Parra","Puerto Rico","Puerto Rondón","Puerto Salgar","Puerto Santander","Puerto Tejada","Puerto Triunfo","Puerto Wilches","Pulí","Pupiales","Puracé","Purificación","Purísima de la Concepción","Quebradanegra","Quetame","Quibdó","Quimbaya","Quinchía","Quípama","Quipile","Ragonvalia","Ramiriquí","Ráquira","Recetor","Regidor","Remedios","Remolino","Repelón","Restrepo","Retiro","Ricaurte","Río de Oro","Río Iró","Río Quito","Río Viejo","Rioblanco","Riofrío","Riohacha","Rionegro","Riosucio","Risaralda","Rivera","Roberto Payán","Roldanillo","Roncesvalles","Rondón","Rosas","Rovira","Sabana de Torres","Sabanagrande","Sabanalarga","Sabanas de San Ángel","Sabaneta","Saboyá","Sácama","Sáchica","Sahagún","Saladoblanco","Salamina","Salazar","Saldaña","Salento","Salgar","Samacá","Samaná","Samaniego","Sampués","San Agustín","San Alberto","San Andrés","San Andrés de Cuerquía","San Andrés de Sotavento","San Andrés de Tumaco","San Antero","San Antonio","San Antonio del Tequendama","San Benito","San Benito Abad","San Bernardo","San Bernardo del Viento","San Calixto","San Carlos","San Carlos de Guaroa","San Cayetano","San Cristóbal","San Diego","San Eduardo","San Estanislao","San Felipe","San Fernando","San Francisco","San Gil","San Jacinto","San Jacinto del Cauca","San Jerónimo","San Joaquín","San José","San José de Cúcuta","San José de la Montaña","San José de Miranda","San José de Pare","San José de Toluviejo","San José de Uré","San José del Fragua","San José del Guaviare","San José del Palmar","San Juan de Arama","San Juan de Betulia","San Juan de Rioseco","San Juan de Urabá","San Juan del Cesar","San Juan Nepomuceno","San Juanito","San Lorenzo","San Luis","San Luis de Gaceno","San Luis de Palenque","San Luis de Sincé","San Marcos","San Martín","San Martín de Loba","San Mateo","San Miguel","San Miguel de Sema","San Onofre","San Pablo","San Pablo de Borbur","San Pedro","San Pedro de Cartago","San Pedro de los Milagros","San Pedro de Urabá","San Pelayo","San Rafael","San Roque","San Sebastián","San Sebastián de Buenavista","San Sebastián de Mariquita","San Vicente de Chucurí","San Vicente del Caguán","San Vicente Ferrer","San Zenón","Sandoná","Santa Ana","Santa Bárbara","Santa Bárbara de Pinto","Santa Catalina","Santa Cruz de Mompox","Santa Fé de Antioquia","Santa Helena del Opón","Santa Isabel","Santa Lucía","Santa María","Santa Marta","Santa Rosa","Santa Rosa de Cabal","Santa Rosa de Osos","Santa Rosa de Viterbo","Santa Rosa del Sur","Santa Rosalía","Santa Sofía","Santacruz","Santana","Santander de Quilichao","Santiago","Santiago de Cali","Santiago de Tolú","Santo Domingo","Santo Tomás","Santuario","Sapuyes","Saravena","Sardinata","Sasaima","Sativanorte","Sativasur","Segovia","Sesquilé","Sevilla","Siachoque","Sibaté","Sibundoy","Silos","Silvania","Silvia","Simacota","Simijaca","Simití","Sincelejo","Sipí","Sitionuevo","Soacha","Soatá","Socha","Socorro","Socotá","Sogamoso","Solano","Soledad","Solita","Somondoco","Sonsón","Sopetrán","Soplaviento","Sopó","Sora","Soracá","Sotaquirá","Sotará Paispamba","Suaita","Suan","Suárez","Suaza","Subachoque","Sucre","Suesca","Supatá","Supía","Suratá","Susa","Susacón","Sutamarchán","Sutatausa","Sutatenza","Tabio","Tadó","Talaigua Nuevo","Tamalameque","Támara","Tame","Támesis","Taminango","Tangua","Taraira","Tarapacá","Tarazá","Tarqui","Tarso","Tasco","Tauramena","Tausa","Tello","Tena","Tenerife","Tenjo","Tenza","Teorama","Teruel","Tesalia","Tibacuy","Tibaná","Tibasosa","Tibirita","Tibú","Tierralta","Timaná","Timbío","Timbiquí","Tinjacá","Tipacoque","Tiquisio","Titiribí","Toca","Tocaima","Tocancipá","Togüí","Toledo","Tona","Tópaga","Topaipí","Toribío","Toro","Tota","Totoró","Trinidad","Trujillo","Tubará","Tuchín","Tuluá","Tunja","Tununguá","Túquerres","Turbaco","Turbana","Turbo","Turmequé","Tuta","Tutazá","Ubalá","Ubaque","Ulloa","Úmbita","Une","Unguía","Unión Panamericana","Uramita","Uribe","Uribia","Urrao","Urumita","Usiacurí","Útica","Valdivia","Valencia","Valle de San José","Valle de San Juan","Valle del Guamuez","Valledupar","Valparaíso","Vegachí","Vélez","Venadillo","Venecia","Ventaquemada","Vergara","Versalles","Vetas","Vianí","Victoria","Vigía del Fuerte","Vijes","Villa Caro","Villa de Leyva","Villa de San Diego de Ubaté","Villa del Rosario","Villa Rica","Villagarzón","Villagómez","Villahermosa","Villamaría","Villanueva","Villapinzón","Villarrica","Villavicencio","Villavieja","Villeta","Viotá","Viracachá","Vistahermosa","Viterbo","Yacopí","Yacuanquer","Yaguará","Yalí","Yarumal","Yavaraté","Yolombó","Yondó","Yopal","Yotoco","Yumbo","Zambrano","Zapatoca","Zapayán","Zaragoza","Zarzal","Zetaquira","Zipacón","Zipaquirá","Zona Bananera"],"paises":["Colombia","Venezuela","Ecuador","Perú","Brasil","Panama","Mexico","Argentina","Chile","España","Estados Unidos","Otro"]},"limites":{"maxHijos":15,"maxContactos":1,"maxFormacion":15,"edadMinimaPersona":15,"edadMaximaPersona":100,"edadMaximaHijo":60,"minDigitosCelular":10,"maxDigitosCelular":10,"minLongitudDocumento":4,"maxLongitudDocumento":20,"maxLongitudTexto":500},"institucionPropia":"Corporación Universitaria del Meta - UNIMETA","dominiosCorreo":["unimeta.edu.co"],"aliasCiudades":{"Bogota":"Bogotá, D.C.","Cali":"Santiago de Cali","Cartagena":"Cartagena de Indias","Cucuta":"San José de Cúcuta"},"sitekey":"0x4AAAAAAFbqNqVSHokfTnhb"};</script>
+window.CONFIG_PUBLICA = {"textos":{"titulo":"Actualización de Datos del Personal","institucion":"Corporación Universitaria del Meta - UNIMETA","introduccion":"La Corporación Universitaria del Meta - UNIMETA está actualizando la información personal, familiar, laboral y académica de su personal administrativo y docente. Los datos se utilizan para la gestión del talento humano, la planeación de actividades de bienestar y el cumplimiento de obligaciones legales y de seguridad social. El diligenciamiento toma aproximadamente 10 minutos.","autorizacion":"Mediante el registro de sus datos personales en el presente formulario usted autoriza a la Corporación Universitaria del Meta – UNIMETA para la recolección, almacenamiento y uso de sus datos con la finalidad de hacer uso de los mismos para actividades institucionales académicas y/o administrativas relacionadas con el objeto social de la Institución. Como Titular de la información tiene derecho a conocer, actualizar y rectificar sus datos personales, solicitar prueba de la autorización otorgada para su tratamiento, ser informado sobre el uso que se ha dado a los mismos, presentar quejas ante la Superintendencia de Industria y Comercio - SIC por infracción a la ley, revocar la autorización y/o solicitar la supresión de sus datos en los casos en que sea procedente y acceder en forma gratuita a los mismos. La Corporación Universitaria del Meta – UNIMETA se encuentra ubicada en la Carrera 33 No.34 - 06, en la ciudad de Villavicencio. Para ejercer sus derechos como titular de la información utilice nuestro canal de atención secretariageneral@unimeta.edu.co.","opcionAcepta":"Sí, acepto","opcionNoAcepta":"No acepto","confirmacionFinal":"Confirmo que revisé la información registrada y que es correcta.","finalRotulo":"Formulario enviado","finalTitulo":"Su información quedó registrada","finalMensaje":"Guardamos su registro en la hoja de vida institucional. Si hace falta algún dato, le escribiremos al correo que indicó.","finalPasos":[{"texto":"Recibirá una copia de su registro en el correo personal que indicó."},{"texto":"Para corregir un dato después del envío, escriba a {correo}.","correo":"talentohumano@unimeta.edu.co"}],"finalNota":"Ya puede cerrar esta pestaña. El formulario admite un solo envío por persona.","correoRemitente":"Actualización de Datos - UNIMETA","correoAsunto":"Copia de su registro de actualización de datos","correoIntroduccion":"Esta es la copia de la información que registró. Consérvela como constancia y revísela: el formulario admite un solo envío por persona.","correoCierre":"Si encuentra algún dato equivocado, escriba a"},"catalogos":{"tiposVinculacion":["Administrativo","Docente"],"tiposDocumento":["Cédula de ciudadanía","Cédula de extranjería","Pasaporte","Permiso por Protección Temporal","Otro"],"estadosCiviles":["Soltero(a)","Casado(a)","Unión libre","Separado(a)","Divorciado(a)","Viudo(a)","Prefiero no responder"],"ocupacionesConyuge":["Empleado(a)","Independiente","Empresario(a)","Estudiante","Labores del hogar","Desempleado(a)","Pensionado(a)","Otra"],"parentescos":["Cónyuge o compañero(a) permanente","Padre","Madre","Hijo(a)","Hermano(a)","Abuelo(a)","Tio(a)","Primo(a)","Amigo(a)","Otro"],"fondosCesantias":["Porvenir","Proteccion","Colfondos","Skandia","FNA - Fondo Nacional del Ahorro","Otro"],"arls":["ARL Sura","Positiva Compañía de Seguros","Colmena Seguros","Seguros Bolívar","Liberty Seguros","Axa Colpatria","La Equidad Seguros","Mapfre Seguros","Otra"],"pasatiempos":["Lectura","Música","Cine o series","Viajes","Cocina","Baile","Arte","Videojuegos","Actividades al aire libre","Voluntariado","Manualidades","Otro"],"deportes":["Futbol","Microfutbol","Baloncesto","Voleibol","Natacion","Ciclismo","Atletismo o trote","Gimnasio","Tenis","Tenis de mesa","Yoga o pilates","Artes marciales","Caminata o senderismo","Otro"],"actividadesCulturales":["Danza o baile","Canto","Interpretación de instrumentos musicales","Teatro","Pintura o dibujo","Fotografía","Escritura o literatura","Artesanías o manualidades","Otra"],"frecuenciasDeporte":["Ocasionalmente","Una o dos veces por semana","Tres o cuatro veces por semana","Cinco o más veces por semana"],"interesActividades":["Si","No","Tal vez"],"actividadesInteres":["Deportivas","Culturales","Recreativas","Artisticas","Formativas o de capacitación","Voluntariado y proyección social"],"nivelesFormacion":["Bachiller","Técnico laboral","Técnico profesional","Tecnólogo","Profesional universitario","Especialización","Maestría","Doctorado","Posdoctorado","Otro"],"tiposInstitucion":["Colegio","Institución técnica o tecnológica","Institución de educación superior"],"estadosEstudio":["Graduado","En curso","Incompleto"],"ciudades":["Abejorral","Ábrego","Abriaquí","Acacías","Acandí","Acevedo","Achí","Agrado","Agua de Dios","Aguachica","Aguada","Aguadas","Aguazul","Agustín Codazzi","Aipe","Albán","Albania","Alcalá","Aldana","Alejandría","Algarrobo","Algeciras","Almaguer","Almeida","Alpujarra","Altamira","Alto Baudó","Altos del Rosario","Alvarado","Amagá","Amalfi","Ambalema","Anapoima","Ancuya","Andalucía","Andes","Angelópolis","Angostura","Anolaima","Anorí","Anserma","Ansermanuevo","Anzá","Anzoátegui","Apartadó","Apía","Apulo","Aquitania","Aracataca","Aranzazu","Aratoca","Arauca","Arauquita","Arbeláez","Arboleda","Arboledas","Arboletes","Arcabuco","Arenal","Argelia","Ariguaní","Arjona","Armenia","Armero","Arroyohondo","Astrea","Ataco","Atrato","Ayapel","Bagadó","Bahía Solano","Bajo Baudó","Balboa","Baranoa","Baraya","Barbacoas","Barbosa","Barichara","Barranca de Upía","Barrancabermeja","Barrancas","Barranco de Loba","Barrancominas","Barranquilla","Becerril","Belalcázar","Belén","Belén de los Andaquíes","Belén de Umbría","Bello","Belmira","Beltrán","Berbeo","Betania","Betéitiva","Betulia","Bituima","Boavita","Bochalema","Bogotá, D.C.","Bojacá","Bojayá","Bolívar","Bosconia","Boyacá","Briceño","Bucaramanga","Bucarasica","Buenaventura","Buenavista","Buenos Aires","Buesaco","Bugalagrande","Buriticá","Busbanzá","Cabrera","Cabuyaro","Cacahual","Cáceres","Cachipay","Cáchira","Cácota","Caicedo","Caicedonia","Caimito","Cajamarca","Cajibío","Cajicá","Calamar","Calarcá","Caldas","Caldono","California","Calima","Caloto","Campamento","Campo de la Cruz","Campoalegre","Campohermoso","Canalete","Candelaria","Cantagallo","Cañasgordas","Caparrapí","Capitanejo","Cáqueza","Caracolí","Caramanta","Carcasí","Carepa","Carmen de Apicalá","Carmen de Carupa","Carmen del Darién","Carolina","Cartagena de Indias","Cartagena del Chairá","Cartago","Carurú","Casabianca","Castilla la Nueva","Caucasia","Cepitá","Cereté","Cerinza","Cerrito","Cerro de San Antonio","Cértegui","Chachagüí","Chaguaní","Chalán","Chámeza","Chaparral","Charalá","Charta","Chía","Chigorodó","Chima","Chimá","Chimichagua","Chinácota","Chinavita","Chinchiná","Chinú","Chipaque","Chipatá","Chiquinquirá","Chíquiza","Chiriguaná","Chiscas","Chita","Chitagá","Chitaraque","Chivatá","Chivolo","Chivor","Choachí","Chocontá","Cicuco","Ciénaga","Ciénaga de Oro","Ciénega","Cimitarra","Circasia","Cisneros","Ciudad Bolívar","Clemencia","Cocorná","Coello","Cogua","Colombia","Colón","Colosó","Cómbita","Concepción","Concordia","Condoto","Confines","Consacá","Contadero","Contratación","Convención","Copacabana","Coper","Córdoba","Corinto","Coromoro","Corozal","Corrales","Cota","Cotorra","Covarachía","Coveñas","Coyaima","Cravo Norte","Cuaspud Carlosama","Cubará","Cubarral","Cucaita","Cucunubá","Cucutilla","Cuítiva","Cumaral","Cumaribo","Cumbal","Cumbitara","Cunday","Curillo","Curití","Curumaní","Dabeiba","Dagua","Dibulla","Distracción","Dolores","Donmatías","Dosquebradas","Duitama","Durania","Ebéjico","El Águila","El Bagre","El Banco","El Cairo","El Calvario","El Cantón del San Pablo","El Carmen","El Carmen de Atrato","El Carmen de Bolívar","El Carmen de Chucurí","El Carmen de Viboral","El Castillo","El Cerrito","El Charco","El Cocuy","El Colegio","El Copey","El Doncello","El Dorado","El Dovio","El Encanto","El Espino","El Guacamayo","El Guamo","El Litoral del San Juan","El Molino","El Paso","El Paujíl","El Peñol","El Peñón","El Piñón","El Playón","El Retén","El Retorno","El Roble","El Rosal","El Rosario","El Santuario","El Tablón de Gómez","El Tambo","El Tarra","El Zulia","Elías","Encino","Enciso","Entrerríos","Envigado","Espinal","Facatativá","Falan","Filadelfia","Filandia","Firavitoba","Flandes","Florencia","Floresta","Florián","Florida","Floridablanca","Fómeque","Fonseca","Fortul","Fosca","Francisco Pizarro","Fredonia","Fresno","Frontino","Fuente de Oro","Fundación","Funes","Funza","Fúquene","Fusagasugá","Gachalá","Gachancipá","Gachantivá","Gachetá","Galán","Galapa","Galeras","Gama","Gamarra","Gámbita","Gámeza","Garagoa","Garzón","Génova","Gigante","Ginebra","Giraldo","Girardot","Girardota","Girón","Gómez Plata","González","Gramalote","Granada","Guaca","Guacamayas","Guacarí","Guachené","Guachetá","Guachucal","Guadalajara de Buga","Guadalupe","Guaduas","Guaitarilla","Gualmatán","Guamal","Guamo","Guapi","Guapotá","Guaranda","Guarne","Guasca","Guatapé","Guataquí","Guatavita","Guateque","Guática","Guavatá","Guayabal de Síquima","Guayabetal","Guayatá","Güepsa","Güicán de la Sierra","Gutiérrez","Hacarí","Hatillo de Loba","Hato","Hato Corozal","Hatonuevo","Heliconia","Herrán","Herveo","Hispania","Hobo","Honda","Ibagué","Icononzo","Iles","Imués","Inírida","Inzá","Ipiales","Íquira","Isnos","Istmina","Itagüí","Ituango","Iza","Jambaló","Jamundí","Jardín","Jenesano","Jericó","Jerusalén","Jesús María","Jordán","Juan de Acosta","Junín","Juradó","La Apartada","La Argentina","La Belleza","La Calera","La Capilla","La Ceja","La Celia","La Chorrera","La Cruz","La Cumbre","La Dorada","La Esperanza","La Estrella","La Florida","La Gloria","La Guadalupe","La Jagua de Ibirico","La Jagua del Pilar","La Llanada","La Macarena","La Merced","La Mesa","La Montañita","La Palma","La Paz","La Pedrera","La Peña","La Pintada","La Plata","La Playa","La Primavera","La Salina","La Sierra","La Tebaida","La Tola","La Unión","La Uvita","La Vega","La Victoria","La Virginia","Labateca","Labranzagrande","Landázuri","Lebrija","Leiva","Lejanías","Lenguazaque","Lérida","Leticia","Líbano","Liborina","Linares","Lloró","López de Micay","Lorica","Los Andes","Los Córdobas","Los Palmitos","Los Patios","Los Santos","Lourdes","Luruaco","Macanal","Macaravita","Maceo","Machetá","Madrid","Magangué","Magüí","Mahates","Maicao","Majagual","Málaga","Malambo","Mallama","Manatí","Manaure","Manaure Balcón del Cesar","Maní","Manizales","Manta","Manzanares","Mapiripán","Margarita","María la Baja","Marinilla","Maripí","Marmato","Marquetalia","Marsella","Marulanda","Matanza","Medellín","Medina","Medio Atrato","Medio Baudó","Medio San Juan","Melgar","Mercaderes","Mesetas","Milán","Miraflores","Miranda","Mirití - Paraná","Mistrató","Mitú","Mocoa","Mogotes","Molagavita","Momil","Mongua","Monguí","Moniquirá","Montebello","Montecristo","Montelíbano","Montenegro","Montería","Monterrey","Moñitos","Morales","Morelia","Morichal","Morroa","Mosquera","Motavita","Murillo","Murindó","Mutatá","Mutiscua","Muzo","Nariño","Nátaga","Natagaima","Nechí","Necoclí","Neira","Neiva","Nemocón","Nilo","Nimaima","Nobsa","Nocaima","Norcasia","Norosí","Nóvita","Nueva Granada","Nuevo Belén de Bajirá","Nuevo Colón","Nunchía","Nuquí","Obando","Ocamonte","Ocaña","Oiba","Oicatá","Olaya","Olaya Herrera","Onzaga","Oporapa","Orito","Orocué","Ortega","Ospina","Otanche","Ovejas","Pachavita","Pacho","Pacoa","Pácora","Padilla","Páez","Paicol","Pailitas","Paime","Paipa","Pajarito","Palermo","Palestina","Palmar","Palmar de Varela","Palmas del Socorro","Palmira","Palmito","Palocabildo","Pamplona","Pamplonita","Pana Pana","Pandi","Panqueba","Papunahua","Páramo","Paratebueno","Pasca","Pasto","Patía","Pauna","Paya","Paz de Ariporo","Paz de Río","Pedraza","Pelaya","Pensilvania","Peñol","Peque","Pereira","Pesca","Piamonte","Piedecuesta","Piedras","Piendamó - Tunía","Pijao","Pijiño del Carmen","Pinchote","Pinillos","Piojó","Pisba","Pital","Pitalito","Pivijay","Planadas","Planeta Rica","Plato","Policarpa","Polonuevo","Ponedera","Popayán","Pore","Potosí","Pradera","Prado","Providencia","Pueblo Bello","Pueblo Nuevo","Pueblo Rico","Pueblorrico","Puebloviejo","Puente Nacional","Puerres","Puerto Alegría","Puerto Arica","Puerto Asís","Puerto Berrío","Puerto Boyacá","Puerto Caicedo","Puerto Carreño","Puerto Colombia","Puerto Concordia","Puerto Escondido","Puerto Gaitán","Puerto Guzmán","Puerto Leguízamo","Puerto Libertador","Puerto Lleras","Puerto López","Puerto Nare","Puerto Nariño","Puerto Parra","Puerto Rico","Puerto Rondón","Puerto Salgar","Puerto Santander","Puerto Tejada","Puerto Triunfo","Puerto Wilches","Pulí","Pupiales","Puracé","Purificación","Purísima de la Concepción","Quebradanegra","Quetame","Quibdó","Quimbaya","Quinchía","Quípama","Quipile","Ragonvalia","Ramiriquí","Ráquira","Recetor","Regidor","Remedios","Remolino","Repelón","Restrepo","Retiro","Ricaurte","Río de Oro","Río Iró","Río Quito","Río Viejo","Rioblanco","Riofrío","Riohacha","Rionegro","Riosucio","Risaralda","Rivera","Roberto Payán","Roldanillo","Roncesvalles","Rondón","Rosas","Rovira","Sabana de Torres","Sabanagrande","Sabanalarga","Sabanas de San Ángel","Sabaneta","Saboyá","Sácama","Sáchica","Sahagún","Saladoblanco","Salamina","Salazar","Saldaña","Salento","Salgar","Samacá","Samaná","Samaniego","Sampués","San Agustín","San Alberto","San Andrés","San Andrés de Cuerquía","San Andrés de Sotavento","San Andrés de Tumaco","San Antero","San Antonio","San Antonio del Tequendama","San Benito","San Benito Abad","San Bernardo","San Bernardo del Viento","San Calixto","San Carlos","San Carlos de Guaroa","San Cayetano","San Cristóbal","San Diego","San Eduardo","San Estanislao","San Felipe","San Fernando","San Francisco","San Gil","San Jacinto","San Jacinto del Cauca","San Jerónimo","San Joaquín","San José","San José de Cúcuta","San José de la Montaña","San José de Miranda","San José de Pare","San José de Toluviejo","San José de Uré","San José del Fragua","San José del Guaviare","San José del Palmar","San Juan de Arama","San Juan de Betulia","San Juan de Rioseco","San Juan de Urabá","San Juan del Cesar","San Juan Nepomuceno","San Juanito","San Lorenzo","San Luis","San Luis de Gaceno","San Luis de Palenque","San Luis de Sincé","San Marcos","San Martín","San Martín de Loba","San Mateo","San Miguel","San Miguel de Sema","San Onofre","San Pablo","San Pablo de Borbur","San Pedro","San Pedro de Cartago","San Pedro de los Milagros","San Pedro de Urabá","San Pelayo","San Rafael","San Roque","San Sebastián","San Sebastián de Buenavista","San Sebastián de Mariquita","San Vicente de Chucurí","San Vicente del Caguán","San Vicente Ferrer","San Zenón","Sandoná","Santa Ana","Santa Bárbara","Santa Bárbara de Pinto","Santa Catalina","Santa Cruz de Mompox","Santa Fé de Antioquia","Santa Helena del Opón","Santa Isabel","Santa Lucía","Santa María","Santa Marta","Santa Rosa","Santa Rosa de Cabal","Santa Rosa de Osos","Santa Rosa de Viterbo","Santa Rosa del Sur","Santa Rosalía","Santa Sofía","Santacruz","Santana","Santander de Quilichao","Santiago","Santiago de Cali","Santiago de Tolú","Santo Domingo","Santo Tomás","Santuario","Sapuyes","Saravena","Sardinata","Sasaima","Sativanorte","Sativasur","Segovia","Sesquilé","Sevilla","Siachoque","Sibaté","Sibundoy","Silos","Silvania","Silvia","Simacota","Simijaca","Simití","Sincelejo","Sipí","Sitionuevo","Soacha","Soatá","Socha","Socorro","Socotá","Sogamoso","Solano","Soledad","Solita","Somondoco","Sonsón","Sopetrán","Soplaviento","Sopó","Sora","Soracá","Sotaquirá","Sotará Paispamba","Suaita","Suan","Suárez","Suaza","Subachoque","Sucre","Suesca","Supatá","Supía","Suratá","Susa","Susacón","Sutamarchán","Sutatausa","Sutatenza","Tabio","Tadó","Talaigua Nuevo","Tamalameque","Támara","Tame","Támesis","Taminango","Tangua","Taraira","Tarapacá","Tarazá","Tarqui","Tarso","Tasco","Tauramena","Tausa","Tello","Tena","Tenerife","Tenjo","Tenza","Teorama","Teruel","Tesalia","Tibacuy","Tibaná","Tibasosa","Tibirita","Tibú","Tierralta","Timaná","Timbío","Timbiquí","Tinjacá","Tipacoque","Tiquisio","Titiribí","Toca","Tocaima","Tocancipá","Togüí","Toledo","Tona","Tópaga","Topaipí","Toribío","Toro","Tota","Totoró","Trinidad","Trujillo","Tubará","Tuchín","Tuluá","Tunja","Tununguá","Túquerres","Turbaco","Turbana","Turbo","Turmequé","Tuta","Tutazá","Ubalá","Ubaque","Ulloa","Úmbita","Une","Unguía","Unión Panamericana","Uramita","Uribe","Uribia","Urrao","Urumita","Usiacurí","Útica","Valdivia","Valencia","Valle de San José","Valle de San Juan","Valle del Guamuez","Valledupar","Valparaíso","Vegachí","Vélez","Venadillo","Venecia","Ventaquemada","Vergara","Versalles","Vetas","Vianí","Victoria","Vigía del Fuerte","Vijes","Villa Caro","Villa de Leyva","Villa de San Diego de Ubaté","Villa del Rosario","Villa Rica","Villagarzón","Villagómez","Villahermosa","Villamaría","Villanueva","Villapinzón","Villarrica","Villavicencio","Villavieja","Villeta","Viotá","Viracachá","Vistahermosa","Viterbo","Yacopí","Yacuanquer","Yaguará","Yalí","Yarumal","Yavaraté","Yolombó","Yondó","Yopal","Yotoco","Yumbo","Zambrano","Zapatoca","Zapayán","Zaragoza","Zarzal","Zetaquira","Zipacón","Zipaquirá","Zona Bananera"],"paises":["Colombia","Venezuela","Ecuador","Perú","Brasil","Panama","Mexico","Argentina","Chile","España","Estados Unidos","Otro"]},"limites":{"maxHijos":15,"maxContactos":1,"maxFormacion":15,"edadMinimaPersona":15,"edadMaximaPersona":100,"edadMaximaHijo":60,"minDigitosCelular":10,"maxDigitosCelular":10,"minLongitudDocumento":4,"maxLongitudDocumento":20,"maxLongitudTexto":500,"minMotivoAnulacion":10,"maxMotivoAnulacion":300,"maxFilasExportacion":3000},"institucionPropia":"Corporación Universitaria del Meta - UNIMETA","dominiosCorreo":["unimeta.edu.co"],"aliasCiudades":{"Bogota":"Bogotá, D.C.","Cali":"Santiago de Cali","Cartagena":"Cartagena de Indias","Cucuta":"San José de Cúcuta"},"sitekey":"0x4AAAAAAFbqNqVSHokfTnhb"};</script>
 <script>
 /* ============================================================
    JavaScript.html
