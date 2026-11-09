@@ -2892,7 +2892,7 @@ function verificarVisitante(accion, contenedor, opciones) {
     <div class="th-cabecera">
       <h2 id="thTitulo" tabindex="-1">Panel de Talento Humano</h2>
       <p class="th-sesion" id="thSesion" hidden><strong id="thUsuario"></strong> · <span id="thActualizado"></span></p>
-      <p class="th-nota" id="thNotaHoja" hidden>La hoja abre en CONSOLIDADO, que se rehace sola: corrija los datos en las pestañas de origen (PERSONAS, HIJOS…).</p>
+      <p class="th-nota" id="thNotaHoja" hidden>La hoja es para consultar: CONSOLIDADO se rehace sola y no se edita. Para corregir un registro, anúlelo desde su ficha y pida a la persona diligenciar de nuevo el formulario.</p>
     </div>
     <div class="th-acciones">
       <a class="btn-secundario th-boton-enlace" id="thAbrirHoja" href="#" target="_blank" rel="noopener noreferrer" hidden
@@ -2946,14 +2946,10 @@ function verificarVisitante(accion, contenedor, opciones) {
       <section class="th-tarjeta th-avance-dias" aria-labelledby="thAvDiasTitulo">
         <h3 id="thAvDiasTitulo">Registros por día</h3>
         <p class="th-nota" id="thAvDiasBase"></p>
-        <div class="th-dias-marco" aria-hidden="true">
+        <div class="th-dias-marco">
           <div class="th-dias" id="thAvDias"></div>
-          <div class="th-dias-etiquetas" id="thAvDiasEtiquetas"></div>
+          <div class="th-dias-etiquetas" aria-hidden="true" id="thAvDiasEtiquetas"></div>
         </div>
-        <details class="th-valores">
-          <summary>Ver datos por día</summary>
-          <dl id="thAvDiasValores"></dl>
-        </details>
       </section>
 
       <div class="th-columnas">
@@ -3958,33 +3954,38 @@ var PanelTH = (function () {
     });
   }
 
-  /** Columnas por dia. Con muchos dias, solo algunas fechas llevan rotulo. */
+  /**
+   * Columnas por dia, desde el lanzamiento. Con muchos dias, solo algunas
+   * fechas llevan rotulo; el lector de pantalla oye fecha y cifra de cada una.
+   */
   function porDia(dias) {
-    var barras = el('thAvDias'), etiquetas = el('thAvDiasEtiquetas'), valores = el('thAvDiasValores');
-    barras.textContent = ''; etiquetas.textContent = ''; valores.textContent = '';
+    var barras = el('thAvDias'), etiquetas = el('thAvDiasEtiquetas');
+    barras.textContent = ''; etiquetas.textContent = '';
     var maximo = dias.reduce(function (m, d) { return Math.max(m, d.cantidad); }, 0);
     var cada = dias.length > 31 ? 7 : dias.length > 14 ? 2 : 1;
     dias.forEach(function (d, n) {
+      var esUltimo = n === dias.length - 1;
       var col = crear('div', 'th-dia');
       col.title = d.etiqueta + ': ' + d.cantidad + ' registro(s)';
-      if (dias.length <= 31 && d.cantidad) col.appendChild(crear('span', 'th-dia-cifra', cifra(d.cantidad)));
+      col.appendChild(crear('span', 'solo-lectores', (esUltimo ? 'Hoy, ' : '') + d.etiqueta + ': ' + d.cantidad + ' registro(s)'));
+      if (dias.length <= 31 && d.cantidad) {
+        var numero = crear('span', 'th-dia-cifra', cifra(d.cantidad));
+        numero.setAttribute('aria-hidden', 'true');
+        col.appendChild(numero);
+      }
       var barra = crear('div', 'th-dia-barra' + (d.cantidad ? '' : ' cero'));
       barra.style.height = (maximo ? Math.max(2, d.cantidad / maximo * 100) : 2) + '%';
       col.appendChild(barra);
       barras.appendChild(col);
-      var esUltimo = n === dias.length - 1;
       var rotulo = esUltimo ? 'Hoy' : (n % cada === 0 && dias.length - 1 - n >= cada ? d.etiqueta : '');
       etiquetas.appendChild(crear('span', null, rotulo));
-      var fila = crear('div', 'th-valor');
-      fila.appendChild(crear('dt', null, d.etiqueta));
-      fila.appendChild(crear('dd', null, cifra(d.cantidad)));
-      valores.appendChild(fila);
     });
     var total = dias.reduce(function (s, d) { return s + d.cantidad; }, 0);
-    el('thAvDiasBase').textContent = dias.length
-      ? cifra(total) + ' registro(s) vigentes en los últimos ' + dias.length + ' días, desde el ' + dias[0].etiqueta +
-        (maximo ? '. El día con más registros tuvo ' + cifra(maximo) + '.' : '.')
-      : '';
+    el('thAvDiasBase').textContent = !dias.length ? ''
+      : dias.length === 1
+        ? cifra(total) + ' registro(s) hoy, ' + dias[0].etiqueta + ', día del lanzamiento.'
+        : cifra(total) + ' registro(s) desde el lanzamiento, el ' + dias[0].etiqueta +
+          (maximo ? '. El día con más registros tuvo ' + cifra(maximo) + '.' : '.');
   }
 
   function ultimosRegistros(lista) {
