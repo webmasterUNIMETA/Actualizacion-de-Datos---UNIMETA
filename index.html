@@ -1275,7 +1275,8 @@ body.modal-abierto { overflow: hidden; }
       <p class="paso-descripcion">
         Si Talento Humano le habilitó esta corrección, podrá revisar los estudios que registró,
         agregar los que le faltaron y guardar. El resto de su registro no cambia. Escriba su
-        número de documento y le enviaremos un código al correo que registró en el formulario.
+        número de documento y le enviaremos un código a su correo institucional (o al personal,
+        si no registró el institucional en el formulario).
       </p>
       <div class="campo" id="campo-correccionDocumento">
         <label for="correccionDocumento">Número de documento<span class="obligatorio">*</span></label>
@@ -4425,7 +4426,8 @@ var PanelTH = (function () {
     var dias = limitesPanel().diasCorreccion || 7;
     el('thCorreccionExplicacion').textContent = 'La persona podrá revisar y completar solo sus estudios ' +
       '(por ejemplo, agregar el título de bachiller) sin diligenciar de nuevo el formulario. Entra con su ' +
-      'documento y un código que le llega al correo registrado. La corrección vence en ' + dias +
+      'documento y un código que le llega a su correo institucional (o al personal, si no registró ' +
+      'el institucional). La corrección vence en ' + dias +
       ' días, sirve una sola vez y queda anotada en la bitácora con su cuenta.';
     el('thCorreccionFormulario').hidden = false;
     el('thCorreccionHecho').hidden = true;
