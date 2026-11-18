@@ -284,6 +284,21 @@ main {
 .paso { display: none; }
 .paso.activo { display: block; animation: aparecer 200ms ease; }
 
+/* Corrección de la formación académica (#corregir-formacion): solo se ve
+   el paso 9, sin riel ni barra de 10 pasos, y con sus propios botones. */
+.navegacion.navegacion-correccion { display: none; }
+body.modo-correccion #zonaProgreso,
+body.modo-correccion #rielPasos,
+body.modo-correccion #notaPie,
+body.modo-correccion .navegacion-formulario { display: none !important; }
+body.modo-correccion .navegacion.navegacion-correccion { display: flex; }
+body.modo-correccion #formulario { display: none; }
+body.modo-correccion.correccion-abierta #formulario { display: block; }
+.correccion { max-width: 720px; }
+.correccion #correccionCodigo { max-width: 220px; font-size: 20px; letter-spacing: .3em; font-variant-numeric: tabular-nums; }
+.correccion #correccionDocumento { max-width: 320px; }
+.correccion .aviso { margin: 18px 0 0; }
+
 @keyframes aparecer {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
@@ -1248,6 +1263,70 @@ body.modal-abierto { overflow: hidden; }
     <ul id="resumenErroresLista"></ul>
   </div>
 
+  <!-- ========================================================
+       CORRECCION DE LA FORMACION ACADEMICA
+       Solo con la direccion terminada en #corregir-formacion, cuando
+       Talento Humano la habilita (ver Correccion.gs).
+       ======================================================== -->
+  <section class="tarjeta correccion" id="correccionAcceso" hidden aria-labelledby="tituloCorreccion">
+    <h2 class="paso-titulo" id="tituloCorreccion" tabindex="-1">Corrección de la formación académica</h2>
+
+    <div id="correccionPasoDocumento">
+      <p class="paso-descripcion">
+        Si Talento Humano le habilitó esta corrección, podrá revisar los estudios que registró,
+        agregar los que le faltaron y guardar. El resto de su registro no cambia. Escriba su
+        número de documento y le enviaremos un código al correo que registró en el formulario.
+      </p>
+      <div class="campo" id="campo-correccionDocumento">
+        <label for="correccionDocumento">Número de documento<span class="obligatorio">*</span></label>
+        <input type="text" id="correccionDocumento" autocomplete="off" maxlength="20"
+               aria-required="true" aria-describedby="error-correccionDocumento">
+        <p class="mensaje-error" id="error-correccionDocumento">Digite su número de documento.</p>
+      </div>
+      <div id="turnstileCorreccion" class="turnstile-contenedor"></div>
+      <div class="navegacion">
+        <span></span>
+        <div class="navegacion-derecha">
+          <button type="button" class="btn-primario" id="btnCorreccionCodigo">Enviar código</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="correccionPasoCodigo" hidden>
+      <p class="paso-descripcion" id="correccionDestino"></p>
+      <div class="campo" id="campo-correccionCodigo">
+        <label for="correccionCodigo">Código de verificación<span class="obligatorio">*</span></label>
+        <input type="text" id="correccionCodigo" inputmode="numeric" autocomplete="one-time-code"
+               maxlength="6" aria-required="true" aria-describedby="error-correccionCodigo">
+        <p class="mensaje-error" id="error-correccionCodigo">Escriba el código de 6 dígitos.</p>
+      </div>
+      <div class="navegacion">
+        <button type="button" class="btn-secundario" id="btnCorreccionOtroCodigo">Pedir otro código</button>
+        <div class="navegacion-derecha">
+          <button type="button" class="btn-primario" id="btnCorreccionVerificar">Verificar código</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="correccionHecho" hidden>
+      <p class="final-rotulo">Corrección guardada</p>
+      <p class="paso-descripcion" id="correccionHechoTexto"></p>
+      <div class="final-datos">
+        <div class="final-dato">
+          <p>Número de radicado</p>
+          <p id="correccionRadicado"></p>
+        </div>
+        <div class="final-dato">
+          <p>Fecha y hora</p>
+          <p id="correccionFecha"></p>
+        </div>
+      </div>
+    </div>
+
+    <p class="aviso aviso-error" id="correccionError" role="alert" hidden></p>
+    <p class="solo-lectores" id="correccionEstado" role="status"></p>
+  </section>
+
   <form id="formulario" novalidate>
 
   <!-- ========================================================
@@ -1758,6 +1837,7 @@ body.modal-abierto { overflow: hidden; }
   <section class="paso tarjeta" data-paso="9" aria-labelledby="t9">
     <h2 class="paso-titulo" id="t9">Formación académica</h2>
     <p class="paso-descripcion">Registre toda su formación académica: los títulos obtenidos y los estudios que actualmente adelanta o tiene en curso.</p>
+    <p class="aviso aviso-info" id="correccionAviso" hidden></p>
 
     <div class="campo" id="campo-nivelFormacionMaximo">
       <label for="nivelFormacionMaximo">Nivel de formación más alto alcanzado<span class="obligatorio">*</span></label>
@@ -1781,10 +1861,16 @@ body.modal-abierto { overflow: hidden; }
       Debe registrar al menos un estudio o título.
     </p>
 
-    <div class="navegacion">
+    <div class="navegacion navegacion-formulario">
       <button type="button" class="btn-secundario" data-accion="anterior">Anterior</button>
       <div class="navegacion-derecha">
         <button type="button" class="btn-primario" data-accion="siguiente">Siguiente</button>
+      </div>
+    </div>
+    <div class="navegacion navegacion-correccion">
+      <button type="button" class="btn-texto" id="btnCorreccionCancelar">Cancelar</button>
+      <div class="navegacion-derecha">
+        <button type="button" class="btn-primario" id="btnCorreccionGuardar">Guardar formación académica</button>
       </div>
     </div>
   </section>
@@ -2815,6 +2901,7 @@ function verificarVisitante(accion, contenedor, opciones) {
 .th-anular .th-acciones-anular { display: flex; gap: 8px; flex-wrap: wrap; }
 .th-anular.hecho { border-color: #cfe5d1; border-left-color: var(--color-exito); background: var(--color-exito-fondo); }
 .th-anular a { color: var(--color-azul); font-weight: 600; }
+.th-correccion { border-left-color: var(--color-azul); }
 
 /* ---------- Ficha: tarjeta centrada ---------- */
 .th-fondo-ficha {
@@ -3109,11 +3196,28 @@ function verificarVisitante(accion, contenedor, opciones) {
         <div class="th-ficha-acciones">
           <button type="button" class="btn-primario" id="thPdf" disabled>Descargar PDF</button>
           <button type="button" class="btn-secundario" id="thImprimir" disabled>Imprimir</button>
+          <button type="button" class="btn-secundario" id="thCorreccionAbrir" disabled>Habilitar corrección de formación</button>
           <button type="button" class="btn-peligro" id="thAnularAbrir" disabled>Anular registro</button>
         </div>
       </div>
     </header>
     <div class="th-ficha-cuerpo">
+      <section class="th-anular th-correccion" id="thCorreccion" hidden aria-labelledby="thCorreccionTitulo">
+        <div id="thCorreccionFormulario">
+          <h3 id="thCorreccionTitulo" tabindex="-1">Habilitar corrección de la formación académica</h3>
+          <p id="thCorreccionExplicacion"></p>
+          <p class="th-nota error" id="thCorreccionError" role="alert"></p>
+          <div class="th-acciones-anular">
+            <button type="button" class="btn-primario" id="thCorreccionConfirmar">Habilitar corrección</button>
+            <button type="button" class="btn-secundario" id="thCorreccionCancelar">Cancelar</button>
+          </div>
+        </div>
+        <div id="thCorreccionHecho" hidden>
+          <h3 id="thCorreccionHechoTitulo" tabindex="-1">Corrección habilitada</h3>
+          <p id="thCorreccionHechoTexto"></p>
+          <p><a id="thCorreccionCorreo" href="#">Escribir a la persona con el enlace de la corrección</a></p>
+        </div>
+      </section>
       <section class="th-anular" id="thAnular" hidden aria-labelledby="thAnularTitulo">
         <div id="thAnularFormulario">
           <h3 id="thAnularTitulo" tabindex="-1">Anular este registro</h3>
@@ -4178,6 +4282,9 @@ var PanelTH = (function () {
     el('thAnular').hidden = true;
     el('thAnularAbrir').hidden = fila.estado === ANULADO;
     el('thAnularAbrir').disabled = true;
+    el('thCorreccion').hidden = true;
+    el('thCorreccionAbrir').hidden = fila.estado === ANULADO;
+    el('thCorreccionAbrir').disabled = true;
     var estado = el('thFichaEstado');
     estado.hidden = false;
     estado.className = 'th-estado';
@@ -4195,6 +4302,7 @@ var PanelTH = (function () {
       el('thPdf').disabled = false;
       el('thImprimir').disabled = false;
       el('thAnularAbrir').disabled = false;
+      el('thCorreccionAbrir').disabled = false;
     }).catch(function (e) {
       if (turno !== turnoFicha) return;
       manejarError(e, function (m) {
@@ -4218,6 +4326,7 @@ var PanelTH = (function () {
     fichaActual = null;
     fichaFila = null;
     el('thAnular').hidden = true;
+    el('thCorreccion').hidden = true;
     el('thFondoFicha').hidden = true;
     document.documentElement.style.overflow = '';
     if (botonOrigen && document.body.contains(botonOrigen)) botonOrigen.focus();
@@ -4229,6 +4338,7 @@ var PanelTH = (function () {
 
   function abrirAnulacion() {
     if (!fichaFila || fichaFila.estado === ANULADO) return;
+    cancelarCorreccion(true);
     el('thAnularFormulario').hidden = false;
     el('thAnularHecho').hidden = true;
     el('thAnular').className = 'th-anular';
@@ -4272,6 +4382,7 @@ var PanelTH = (function () {
       if (turno !== turnoFicha) return;
       chipsFicha(fila);
       el('thAnularAbrir').hidden = true;
+      el('thCorreccionAbrir').hidden = true;
       el('thAnularFormulario').hidden = true;
       el('thAnular').className = 'th-anular hecho';
       el('thAnularHechoTexto').textContent = (r.nombre || 'La persona') +
@@ -4302,6 +4413,78 @@ var PanelTH = (function () {
       'Gracias,\nTalento Humano - UNIMETA';
     return 'mailto:' + encodeURIComponent(r.correo) +
       '?subject=' + encodeURIComponent('Actualización de datos UNIMETA: diligencie de nuevo el formulario') +
+      '&body=' + encodeURIComponent(cuerpo);
+  }
+
+  /* ---------- Corrección de la formación académica ---------- */
+
+  function abrirCorreccionTH() {
+    if (!fichaFila || fichaFila.estado === ANULADO) return;
+    el('thAnular').hidden = true;
+    el('thAnularAbrir').disabled = false;
+    var dias = limitesPanel().diasCorreccion || 7;
+    el('thCorreccionExplicacion').textContent = 'La persona podrá revisar y completar solo sus estudios ' +
+      '(por ejemplo, agregar el título de bachiller) sin diligenciar de nuevo el formulario. Entra con su ' +
+      'documento y un código que le llega al correo registrado. La corrección vence en ' + dias +
+      ' días, sirve una sola vez y queda anotada en la bitácora con su cuenta.';
+    el('thCorreccionFormulario').hidden = false;
+    el('thCorreccionHecho').hidden = true;
+    el('thCorreccion').className = 'th-anular th-correccion';
+    nota('thCorreccionError', '');
+    el('thCorreccion').hidden = false;
+    el('thCorreccionAbrir').disabled = true;
+    el('thCorreccion').closest('.th-ficha-cuerpo').scrollTop = 0;
+    el('thCorreccionTitulo').focus();
+  }
+
+  function cancelarCorreccion(sinFoco) {
+    el('thCorreccion').hidden = true;
+    el('thCorreccionAbrir').disabled = false;
+    if (sinFoco !== true) el('thCorreccionAbrir').focus();
+  }
+
+  function confirmarCorreccion() {
+    var fila = fichaFila, turno = turnoFicha;
+    if (!fila) return;
+    var confirmar = el('thCorreccionConfirmar'), cancelar = el('thCorreccionCancelar');
+    confirmar.disabled = cancelar.disabled = true;
+    confirmar.textContent = 'Habilitando…';
+    nota('thCorreccionError', '');
+    pedir('panelHabilitarCorreccion', { idToken: idToken, radicado: fila.radicado }).then(function (r) {
+      if (turno !== turnoFicha) return;
+      el('thCorreccionFormulario').hidden = true;
+      el('thCorreccion').className = 'th-anular th-correccion hecho';
+      el('thCorreccionHechoTexto').textContent = (r.nombre || 'La persona') +
+        ' puede corregir su formación académica hasta el ' + r.vence + '. Avísele con el enlace de abajo: ' +
+        'el mensaje ya trae la dirección y los pasos. El código le llegará a ' + r.correo + '.';
+      el('thCorreccionCorreo').href = correoCorreccion(r);
+      el('thCorreccionHecho').hidden = false;
+      el('thCorreccionHechoTitulo').focus();
+    }).catch(function (e) {
+      if (turno !== turnoFicha) return;
+      manejarError(e, function (m) { nota('thCorreccionError', m, true); });
+    }).then(function () {
+      confirmar.disabled = cancelar.disabled = false;
+      confirmar.textContent = 'Habilitar corrección';
+    });
+  }
+
+  /** Mensaje listo para la persona, con la dirección de la corrección. */
+  function correoCorreccion(r) {
+    var enlace = r.urlCorreccion || (location.origin + location.pathname + '#corregir-formacion');
+    var cuerpo = 'Buen día' + (r.nombre ? ', ' + r.nombre : '') + ':\n\n' +
+      'Habilitamos la corrección de la formación académica de su registro ' + r.radicado +
+      ' en el formulario de actualización de datos, para que agregue los estudios que le faltaron ' +
+      '(por ejemplo, su título de bachiller).\n\n' +
+      '1. Abra este enlace: ' + enlace + '\n' +
+      '2. Escriba su número de documento y pulse «Enviar código».\n' +
+      '3. Escriba el código de 6 dígitos que le llegará a este correo.\n' +
+      '4. Revise sus estudios, agregue los que faltan y pulse «Guardar formación académica».\n\n' +
+      'La corrección está disponible hasta el ' + r.vence + ' y se puede guardar una sola vez. ' +
+      'El resto de su registro no cambia.\n\n' +
+      'Gracias,\nTalento Humano - UNIMETA';
+    return 'mailto:' + encodeURIComponent(r.correo) +
+      '?subject=' + encodeURIComponent('Actualización de datos UNIMETA: complete su formación académica') +
       '&body=' + encodeURIComponent(cuerpo);
   }
 
@@ -4397,6 +4580,9 @@ var PanelTH = (function () {
     el('thAnularCancelar').addEventListener('click', cancelarAnulacion);
     el('thAnularConfirmar').addEventListener('click', confirmarAnulacion);
     el('thAnularMotivo').addEventListener('input', contarMotivo);
+    el('thCorreccionAbrir').addEventListener('click', abrirCorreccionTH);
+    el('thCorreccionCancelar').addEventListener('click', cancelarCorreccion);
+    el('thCorreccionConfirmar').addEventListener('click', confirmarCorreccion);
     el('thFiltrosAnalisis').addEventListener('submit', function (e) { e.preventDefault(); cargarAnalisis(); });
     // Los filtros se aplican al cambiarlos.
     el('thAnalisisVinculacion').addEventListener('change', cargarAnalisis);
@@ -4445,7 +4631,7 @@ var PanelTH = (function () {
 </script>
 
 <script>window.URL_SERVIDOR = "https://script.google.com/macros/s/AKfycbw7h5je56SzVEgpRmNRcxuDon-mD9MjVuImIXQnKWSIjCkxAhOF1rt1FewUT9lgqIWbtg/exec";
-window.CONFIG_PUBLICA = {"textos":{"titulo":"Actualización de Datos del Personal","institucion":"Corporación Universitaria del Meta - UNIMETA","introduccion":"La Corporación Universitaria del Meta - UNIMETA está actualizando la información personal, familiar, laboral y académica de su personal administrativo y docente. Los datos se utilizan para la gestión del talento humano, la planeación de actividades de bienestar y el cumplimiento de obligaciones legales y de seguridad social. El diligenciamiento toma aproximadamente 10 minutos.","autorizacion":"Mediante el registro de sus datos personales en el presente formulario usted autoriza a la Corporación Universitaria del Meta – UNIMETA para la recolección, almacenamiento y uso de sus datos con la finalidad de hacer uso de los mismos para actividades institucionales académicas y/o administrativas relacionadas con el objeto social de la Institución. Como Titular de la información tiene derecho a conocer, actualizar y rectificar sus datos personales, solicitar prueba de la autorización otorgada para su tratamiento, ser informado sobre el uso que se ha dado a los mismos, presentar quejas ante la Superintendencia de Industria y Comercio - SIC por infracción a la ley, revocar la autorización y/o solicitar la supresión de sus datos en los casos en que sea procedente y acceder en forma gratuita a los mismos. La Corporación Universitaria del Meta – UNIMETA se encuentra ubicada en la Carrera 33 No.34 - 06, en la ciudad de Villavicencio. Para ejercer sus derechos como titular de la información utilice nuestro canal de atención secretariageneral@unimeta.edu.co.","opcionAcepta":"Sí, acepto","opcionNoAcepta":"No acepto","confirmacionFinal":"Confirmo que revisé la información registrada y que es correcta.","finalRotulo":"Formulario enviado","finalTitulo":"Su información quedó registrada","finalMensaje":"Guardamos su registro en la hoja de vida institucional. Si hace falta algún dato, le escribiremos al correo que indicó.","finalPasos":[{"texto":"Recibirá una copia de su registro en el correo personal que indicó."},{"texto":"Para corregir un dato después del envío, escriba a {correo}.","correo":"talentohumano@unimeta.edu.co"}],"finalNota":"Ya puede cerrar esta pestaña. El formulario admite un solo envío por persona.","correoRemitente":"Actualización de Datos - UNIMETA","correoAsunto":"Copia de su registro de actualización de datos","correoIntroduccion":"Esta es la copia de la información que registró. Consérvela como constancia y revísela: el formulario admite un solo envío por persona.","correoCierre":"Si encuentra algún dato equivocado, escriba a"},"catalogos":{"tiposVinculacion":["Administrativo","Docente"],"tiposDocumento":["Cédula de ciudadanía","Cédula de extranjería","Pasaporte","Permiso por Protección Temporal","Otro"],"estadosCiviles":["Soltero(a)","Casado(a)","Unión libre","Separado(a)","Divorciado(a)","Viudo(a)","Prefiero no responder"],"ocupacionesConyuge":["Empleado(a)","Independiente","Empresario(a)","Estudiante","Labores del hogar","Desempleado(a)","Pensionado(a)","Otra"],"parentescos":["Cónyuge o compañero(a) permanente","Padre","Madre","Hijo(a)","Hermano(a)","Abuelo(a)","Tio(a)","Primo(a)","Amigo(a)","Otro"],"fondosCesantias":["Porvenir","Proteccion","Colfondos","Skandia","FNA - Fondo Nacional del Ahorro","Otro"],"arls":["ARL Sura","Positiva Compañía de Seguros","Colmena Seguros","Seguros Bolívar","Liberty Seguros","Axa Colpatria","La Equidad Seguros","Mapfre Seguros","Otra"],"pasatiempos":["Lectura","Música","Cine o series","Viajes","Cocina","Baile","Arte","Videojuegos","Actividades al aire libre","Voluntariado","Manualidades","Otro"],"deportes":["Futbol","Microfutbol","Baloncesto","Voleibol","Natacion","Ciclismo","Atletismo o trote","Gimnasio","Tenis","Tenis de mesa","Yoga o pilates","Artes marciales","Caminata o senderismo","Otro"],"actividadesCulturales":["Danza o baile","Canto","Interpretación de instrumentos musicales","Teatro","Pintura o dibujo","Fotografía","Escritura o literatura","Artesanías o manualidades","Otra"],"frecuenciasDeporte":["Ocasionalmente","Una o dos veces por semana","Tres o cuatro veces por semana","Cinco o más veces por semana"],"interesActividades":["Si","No","Tal vez"],"actividadesInteres":["Deportivas","Culturales","Recreativas","Artisticas","Formativas o de capacitación","Voluntariado y proyección social"],"nivelesFormacion":["Bachiller","Técnico laboral","Técnico profesional","Tecnólogo","Profesional universitario","Especialización","Maestría","Doctorado","Posdoctorado","Otro"],"tiposInstitucion":["Colegio","Institución técnica o tecnológica","Institución de educación superior"],"estadosEstudio":["Graduado","En curso","Incompleto"],"ciudades":["Abejorral","Ábrego","Abriaquí","Acacías","Acandí","Acevedo","Achí","Agrado","Agua de Dios","Aguachica","Aguada","Aguadas","Aguazul","Agustín Codazzi","Aipe","Albán","Albania","Alcalá","Aldana","Alejandría","Algarrobo","Algeciras","Almaguer","Almeida","Alpujarra","Altamira","Alto Baudó","Altos del Rosario","Alvarado","Amagá","Amalfi","Ambalema","Anapoima","Ancuya","Andalucía","Andes","Angelópolis","Angostura","Anolaima","Anorí","Anserma","Ansermanuevo","Anzá","Anzoátegui","Apartadó","Apía","Apulo","Aquitania","Aracataca","Aranzazu","Aratoca","Arauca","Arauquita","Arbeláez","Arboleda","Arboledas","Arboletes","Arcabuco","Arenal","Argelia","Ariguaní","Arjona","Armenia","Armero","Arroyohondo","Astrea","Ataco","Atrato","Ayapel","Bagadó","Bahía Solano","Bajo Baudó","Balboa","Baranoa","Baraya","Barbacoas","Barbosa","Barichara","Barranca de Upía","Barrancabermeja","Barrancas","Barranco de Loba","Barrancominas","Barranquilla","Becerril","Belalcázar","Belén","Belén de los Andaquíes","Belén de Umbría","Bello","Belmira","Beltrán","Berbeo","Betania","Betéitiva","Betulia","Bituima","Boavita","Bochalema","Bogotá, D.C.","Bojacá","Bojayá","Bolívar","Bosconia","Boyacá","Briceño","Bucaramanga","Bucarasica","Buenaventura","Buenavista","Buenos Aires","Buesaco","Bugalagrande","Buriticá","Busbanzá","Cabrera","Cabuyaro","Cacahual","Cáceres","Cachipay","Cáchira","Cácota","Caicedo","Caicedonia","Caimito","Cajamarca","Cajibío","Cajicá","Calamar","Calarcá","Caldas","Caldono","California","Calima","Caloto","Campamento","Campo de la Cruz","Campoalegre","Campohermoso","Canalete","Candelaria","Cantagallo","Cañasgordas","Caparrapí","Capitanejo","Cáqueza","Caracolí","Caramanta","Carcasí","Carepa","Carmen de Apicalá","Carmen de Carupa","Carmen del Darién","Carolina","Cartagena de Indias","Cartagena del Chairá","Cartago","Carurú","Casabianca","Castilla la Nueva","Caucasia","Cepitá","Cereté","Cerinza","Cerrito","Cerro de San Antonio","Cértegui","Chachagüí","Chaguaní","Chalán","Chámeza","Chaparral","Charalá","Charta","Chía","Chigorodó","Chima","Chimá","Chimichagua","Chinácota","Chinavita","Chinchiná","Chinú","Chipaque","Chipatá","Chiquinquirá","Chíquiza","Chiriguaná","Chiscas","Chita","Chitagá","Chitaraque","Chivatá","Chivolo","Chivor","Choachí","Chocontá","Cicuco","Ciénaga","Ciénaga de Oro","Ciénega","Cimitarra","Circasia","Cisneros","Ciudad Bolívar","Clemencia","Cocorná","Coello","Cogua","Colombia","Colón","Colosó","Cómbita","Concepción","Concordia","Condoto","Confines","Consacá","Contadero","Contratación","Convención","Copacabana","Coper","Córdoba","Corinto","Coromoro","Corozal","Corrales","Cota","Cotorra","Covarachía","Coveñas","Coyaima","Cravo Norte","Cuaspud Carlosama","Cubará","Cubarral","Cucaita","Cucunubá","Cucutilla","Cuítiva","Cumaral","Cumaribo","Cumbal","Cumbitara","Cunday","Curillo","Curití","Curumaní","Dabeiba","Dagua","Dibulla","Distracción","Dolores","Donmatías","Dosquebradas","Duitama","Durania","Ebéjico","El Águila","El Bagre","El Banco","El Cairo","El Calvario","El Cantón del San Pablo","El Carmen","El Carmen de Atrato","El Carmen de Bolívar","El Carmen de Chucurí","El Carmen de Viboral","El Castillo","El Cerrito","El Charco","El Cocuy","El Colegio","El Copey","El Doncello","El Dorado","El Dovio","El Encanto","El Espino","El Guacamayo","El Guamo","El Litoral del San Juan","El Molino","El Paso","El Paujíl","El Peñol","El Peñón","El Piñón","El Playón","El Retén","El Retorno","El Roble","El Rosal","El Rosario","El Santuario","El Tablón de Gómez","El Tambo","El Tarra","El Zulia","Elías","Encino","Enciso","Entrerríos","Envigado","Espinal","Facatativá","Falan","Filadelfia","Filandia","Firavitoba","Flandes","Florencia","Floresta","Florián","Florida","Floridablanca","Fómeque","Fonseca","Fortul","Fosca","Francisco Pizarro","Fredonia","Fresno","Frontino","Fuente de Oro","Fundación","Funes","Funza","Fúquene","Fusagasugá","Gachalá","Gachancipá","Gachantivá","Gachetá","Galán","Galapa","Galeras","Gama","Gamarra","Gámbita","Gámeza","Garagoa","Garzón","Génova","Gigante","Ginebra","Giraldo","Girardot","Girardota","Girón","Gómez Plata","González","Gramalote","Granada","Guaca","Guacamayas","Guacarí","Guachené","Guachetá","Guachucal","Guadalajara de Buga","Guadalupe","Guaduas","Guaitarilla","Gualmatán","Guamal","Guamo","Guapi","Guapotá","Guaranda","Guarne","Guasca","Guatapé","Guataquí","Guatavita","Guateque","Guática","Guavatá","Guayabal de Síquima","Guayabetal","Guayatá","Güepsa","Güicán de la Sierra","Gutiérrez","Hacarí","Hatillo de Loba","Hato","Hato Corozal","Hatonuevo","Heliconia","Herrán","Herveo","Hispania","Hobo","Honda","Ibagué","Icononzo","Iles","Imués","Inírida","Inzá","Ipiales","Íquira","Isnos","Istmina","Itagüí","Ituango","Iza","Jambaló","Jamundí","Jardín","Jenesano","Jericó","Jerusalén","Jesús María","Jordán","Juan de Acosta","Junín","Juradó","La Apartada","La Argentina","La Belleza","La Calera","La Capilla","La Ceja","La Celia","La Chorrera","La Cruz","La Cumbre","La Dorada","La Esperanza","La Estrella","La Florida","La Gloria","La Guadalupe","La Jagua de Ibirico","La Jagua del Pilar","La Llanada","La Macarena","La Merced","La Mesa","La Montañita","La Palma","La Paz","La Pedrera","La Peña","La Pintada","La Plata","La Playa","La Primavera","La Salina","La Sierra","La Tebaida","La Tola","La Unión","La Uvita","La Vega","La Victoria","La Virginia","Labateca","Labranzagrande","Landázuri","Lebrija","Leiva","Lejanías","Lenguazaque","Lérida","Leticia","Líbano","Liborina","Linares","Lloró","López de Micay","Lorica","Los Andes","Los Córdobas","Los Palmitos","Los Patios","Los Santos","Lourdes","Luruaco","Macanal","Macaravita","Maceo","Machetá","Madrid","Magangué","Magüí","Mahates","Maicao","Majagual","Málaga","Malambo","Mallama","Manatí","Manaure","Manaure Balcón del Cesar","Maní","Manizales","Manta","Manzanares","Mapiripán","Margarita","María la Baja","Marinilla","Maripí","Marmato","Marquetalia","Marsella","Marulanda","Matanza","Medellín","Medina","Medio Atrato","Medio Baudó","Medio San Juan","Melgar","Mercaderes","Mesetas","Milán","Miraflores","Miranda","Mirití - Paraná","Mistrató","Mitú","Mocoa","Mogotes","Molagavita","Momil","Mongua","Monguí","Moniquirá","Montebello","Montecristo","Montelíbano","Montenegro","Montería","Monterrey","Moñitos","Morales","Morelia","Morichal","Morroa","Mosquera","Motavita","Murillo","Murindó","Mutatá","Mutiscua","Muzo","Nariño","Nátaga","Natagaima","Nechí","Necoclí","Neira","Neiva","Nemocón","Nilo","Nimaima","Nobsa","Nocaima","Norcasia","Norosí","Nóvita","Nueva Granada","Nuevo Belén de Bajirá","Nuevo Colón","Nunchía","Nuquí","Obando","Ocamonte","Ocaña","Oiba","Oicatá","Olaya","Olaya Herrera","Onzaga","Oporapa","Orito","Orocué","Ortega","Ospina","Otanche","Ovejas","Pachavita","Pacho","Pacoa","Pácora","Padilla","Páez","Paicol","Pailitas","Paime","Paipa","Pajarito","Palermo","Palestina","Palmar","Palmar de Varela","Palmas del Socorro","Palmira","Palmito","Palocabildo","Pamplona","Pamplonita","Pana Pana","Pandi","Panqueba","Papunahua","Páramo","Paratebueno","Pasca","Pasto","Patía","Pauna","Paya","Paz de Ariporo","Paz de Río","Pedraza","Pelaya","Pensilvania","Peñol","Peque","Pereira","Pesca","Piamonte","Piedecuesta","Piedras","Piendamó - Tunía","Pijao","Pijiño del Carmen","Pinchote","Pinillos","Piojó","Pisba","Pital","Pitalito","Pivijay","Planadas","Planeta Rica","Plato","Policarpa","Polonuevo","Ponedera","Popayán","Pore","Potosí","Pradera","Prado","Providencia","Pueblo Bello","Pueblo Nuevo","Pueblo Rico","Pueblorrico","Puebloviejo","Puente Nacional","Puerres","Puerto Alegría","Puerto Arica","Puerto Asís","Puerto Berrío","Puerto Boyacá","Puerto Caicedo","Puerto Carreño","Puerto Colombia","Puerto Concordia","Puerto Escondido","Puerto Gaitán","Puerto Guzmán","Puerto Leguízamo","Puerto Libertador","Puerto Lleras","Puerto López","Puerto Nare","Puerto Nariño","Puerto Parra","Puerto Rico","Puerto Rondón","Puerto Salgar","Puerto Santander","Puerto Tejada","Puerto Triunfo","Puerto Wilches","Pulí","Pupiales","Puracé","Purificación","Purísima de la Concepción","Quebradanegra","Quetame","Quibdó","Quimbaya","Quinchía","Quípama","Quipile","Ragonvalia","Ramiriquí","Ráquira","Recetor","Regidor","Remedios","Remolino","Repelón","Restrepo","Retiro","Ricaurte","Río de Oro","Río Iró","Río Quito","Río Viejo","Rioblanco","Riofrío","Riohacha","Rionegro","Riosucio","Risaralda","Rivera","Roberto Payán","Roldanillo","Roncesvalles","Rondón","Rosas","Rovira","Sabana de Torres","Sabanagrande","Sabanalarga","Sabanas de San Ángel","Sabaneta","Saboyá","Sácama","Sáchica","Sahagún","Saladoblanco","Salamina","Salazar","Saldaña","Salento","Salgar","Samacá","Samaná","Samaniego","Sampués","San Agustín","San Alberto","San Andrés","San Andrés de Cuerquía","San Andrés de Sotavento","San Andrés de Tumaco","San Antero","San Antonio","San Antonio del Tequendama","San Benito","San Benito Abad","San Bernardo","San Bernardo del Viento","San Calixto","San Carlos","San Carlos de Guaroa","San Cayetano","San Cristóbal","San Diego","San Eduardo","San Estanislao","San Felipe","San Fernando","San Francisco","San Gil","San Jacinto","San Jacinto del Cauca","San Jerónimo","San Joaquín","San José","San José de Cúcuta","San José de la Montaña","San José de Miranda","San José de Pare","San José de Toluviejo","San José de Uré","San José del Fragua","San José del Guaviare","San José del Palmar","San Juan de Arama","San Juan de Betulia","San Juan de Rioseco","San Juan de Urabá","San Juan del Cesar","San Juan Nepomuceno","San Juanito","San Lorenzo","San Luis","San Luis de Gaceno","San Luis de Palenque","San Luis de Sincé","San Marcos","San Martín","San Martín de Loba","San Mateo","San Miguel","San Miguel de Sema","San Onofre","San Pablo","San Pablo de Borbur","San Pedro","San Pedro de Cartago","San Pedro de los Milagros","San Pedro de Urabá","San Pelayo","San Rafael","San Roque","San Sebastián","San Sebastián de Buenavista","San Sebastián de Mariquita","San Vicente de Chucurí","San Vicente del Caguán","San Vicente Ferrer","San Zenón","Sandoná","Santa Ana","Santa Bárbara","Santa Bárbara de Pinto","Santa Catalina","Santa Cruz de Mompox","Santa Fé de Antioquia","Santa Helena del Opón","Santa Isabel","Santa Lucía","Santa María","Santa Marta","Santa Rosa","Santa Rosa de Cabal","Santa Rosa de Osos","Santa Rosa de Viterbo","Santa Rosa del Sur","Santa Rosalía","Santa Sofía","Santacruz","Santana","Santander de Quilichao","Santiago","Santiago de Cali","Santiago de Tolú","Santo Domingo","Santo Tomás","Santuario","Sapuyes","Saravena","Sardinata","Sasaima","Sativanorte","Sativasur","Segovia","Sesquilé","Sevilla","Siachoque","Sibaté","Sibundoy","Silos","Silvania","Silvia","Simacota","Simijaca","Simití","Sincelejo","Sipí","Sitionuevo","Soacha","Soatá","Socha","Socorro","Socotá","Sogamoso","Solano","Soledad","Solita","Somondoco","Sonsón","Sopetrán","Soplaviento","Sopó","Sora","Soracá","Sotaquirá","Sotará Paispamba","Suaita","Suan","Suárez","Suaza","Subachoque","Sucre","Suesca","Supatá","Supía","Suratá","Susa","Susacón","Sutamarchán","Sutatausa","Sutatenza","Tabio","Tadó","Talaigua Nuevo","Tamalameque","Támara","Tame","Támesis","Taminango","Tangua","Taraira","Tarapacá","Tarazá","Tarqui","Tarso","Tasco","Tauramena","Tausa","Tello","Tena","Tenerife","Tenjo","Tenza","Teorama","Teruel","Tesalia","Tibacuy","Tibaná","Tibasosa","Tibirita","Tibú","Tierralta","Timaná","Timbío","Timbiquí","Tinjacá","Tipacoque","Tiquisio","Titiribí","Toca","Tocaima","Tocancipá","Togüí","Toledo","Tona","Tópaga","Topaipí","Toribío","Toro","Tota","Totoró","Trinidad","Trujillo","Tubará","Tuchín","Tuluá","Tunja","Tununguá","Túquerres","Turbaco","Turbana","Turbo","Turmequé","Tuta","Tutazá","Ubalá","Ubaque","Ulloa","Úmbita","Une","Unguía","Unión Panamericana","Uramita","Uribe","Uribia","Urrao","Urumita","Usiacurí","Útica","Valdivia","Valencia","Valle de San José","Valle de San Juan","Valle del Guamuez","Valledupar","Valparaíso","Vegachí","Vélez","Venadillo","Venecia","Ventaquemada","Vergara","Versalles","Vetas","Vianí","Victoria","Vigía del Fuerte","Vijes","Villa Caro","Villa de Leyva","Villa de San Diego de Ubaté","Villa del Rosario","Villa Rica","Villagarzón","Villagómez","Villahermosa","Villamaría","Villanueva","Villapinzón","Villarrica","Villavicencio","Villavieja","Villeta","Viotá","Viracachá","Vistahermosa","Viterbo","Yacopí","Yacuanquer","Yaguará","Yalí","Yarumal","Yavaraté","Yolombó","Yondó","Yopal","Yotoco","Yumbo","Zambrano","Zapatoca","Zapayán","Zaragoza","Zarzal","Zetaquira","Zipacón","Zipaquirá","Zona Bananera"],"paises":["Colombia","Venezuela","Ecuador","Perú","Brasil","Panama","Mexico","Argentina","Chile","España","Estados Unidos","Otro"]},"limites":{"maxHijos":15,"maxContactos":1,"maxFormacion":15,"edadMinimaPersona":15,"edadMaximaPersona":100,"edadMaximaHijo":60,"minDigitosCelular":10,"maxDigitosCelular":10,"minLongitudDocumento":4,"maxLongitudDocumento":20,"maxLongitudTexto":500,"minMotivoAnulacion":10,"maxMotivoAnulacion":300,"maxFilasExportacion":3000},"institucionPropia":"Corporación Universitaria del Meta - UNIMETA","dominiosCorreo":["unimeta.edu.co"],"aliasCiudades":{"Bogota":"Bogotá, D.C.","Cali":"Santiago de Cali","Cartagena":"Cartagena de Indias","Cucuta":"San José de Cúcuta"},"sitekey":"0x4AAAAAAFbqNqVSHokfTnhb"};</script>
+window.CONFIG_PUBLICA = {"textos":{"titulo":"Actualización de Datos del Personal","institucion":"Corporación Universitaria del Meta - UNIMETA","introduccion":"La Corporación Universitaria del Meta - UNIMETA está actualizando la información personal, familiar, laboral y académica de su personal administrativo y docente. Los datos se utilizan para la gestión del talento humano, la planeación de actividades de bienestar y el cumplimiento de obligaciones legales y de seguridad social. El diligenciamiento toma aproximadamente 10 minutos.","autorizacion":"Mediante el registro de sus datos personales en el presente formulario usted autoriza a la Corporación Universitaria del Meta – UNIMETA para la recolección, almacenamiento y uso de sus datos con la finalidad de hacer uso de los mismos para actividades institucionales académicas y/o administrativas relacionadas con el objeto social de la Institución. Como Titular de la información tiene derecho a conocer, actualizar y rectificar sus datos personales, solicitar prueba de la autorización otorgada para su tratamiento, ser informado sobre el uso que se ha dado a los mismos, presentar quejas ante la Superintendencia de Industria y Comercio - SIC por infracción a la ley, revocar la autorización y/o solicitar la supresión de sus datos en los casos en que sea procedente y acceder en forma gratuita a los mismos. La Corporación Universitaria del Meta – UNIMETA se encuentra ubicada en la Carrera 33 No.34 - 06, en la ciudad de Villavicencio. Para ejercer sus derechos como titular de la información utilice nuestro canal de atención secretariageneral@unimeta.edu.co.","opcionAcepta":"Sí, acepto","opcionNoAcepta":"No acepto","confirmacionFinal":"Confirmo que revisé la información registrada y que es correcta.","finalRotulo":"Formulario enviado","finalTitulo":"Su información quedó registrada","finalMensaje":"Guardamos su registro en la hoja de vida institucional. Si hace falta algún dato, le escribiremos al correo que indicó.","finalPasos":[{"texto":"Recibirá una copia de su registro en el correo personal que indicó."},{"texto":"Para corregir un dato después del envío, escriba a {correo}.","correo":"talentohumano@unimeta.edu.co"}],"finalNota":"Ya puede cerrar esta pestaña. El formulario admite un solo envío por persona.","correoRemitente":"Actualización de Datos - UNIMETA","correoAsunto":"Copia de su registro de actualización de datos","correoIntroduccion":"Esta es la copia de la información que registró. Consérvela como constancia y revísela: el formulario admite un solo envío por persona.","correoCierre":"Si encuentra algún dato equivocado, escriba a"},"catalogos":{"tiposVinculacion":["Administrativo","Docente"],"tiposDocumento":["Cédula de ciudadanía","Cédula de extranjería","Pasaporte","Permiso por Protección Temporal","Otro"],"estadosCiviles":["Soltero(a)","Casado(a)","Unión libre","Separado(a)","Divorciado(a)","Viudo(a)","Prefiero no responder"],"ocupacionesConyuge":["Empleado(a)","Independiente","Empresario(a)","Estudiante","Labores del hogar","Desempleado(a)","Pensionado(a)","Otra"],"parentescos":["Cónyuge o compañero(a) permanente","Padre","Madre","Hijo(a)","Hermano(a)","Abuelo(a)","Tio(a)","Primo(a)","Amigo(a)","Otro"],"fondosCesantias":["Porvenir","Proteccion","Colfondos","Skandia","FNA - Fondo Nacional del Ahorro","Otro"],"arls":["ARL Sura","Positiva Compañía de Seguros","Colmena Seguros","Seguros Bolívar","Liberty Seguros","Axa Colpatria","La Equidad Seguros","Mapfre Seguros","Otra"],"pasatiempos":["Lectura","Música","Cine o series","Viajes","Cocina","Baile","Arte","Videojuegos","Actividades al aire libre","Voluntariado","Manualidades","Otro"],"deportes":["Futbol","Microfutbol","Baloncesto","Voleibol","Natacion","Ciclismo","Atletismo o trote","Gimnasio","Tenis","Tenis de mesa","Yoga o pilates","Artes marciales","Caminata o senderismo","Otro"],"actividadesCulturales":["Danza o baile","Canto","Interpretación de instrumentos musicales","Teatro","Pintura o dibujo","Fotografía","Escritura o literatura","Artesanías o manualidades","Otra"],"frecuenciasDeporte":["Ocasionalmente","Una o dos veces por semana","Tres o cuatro veces por semana","Cinco o más veces por semana"],"interesActividades":["Si","No","Tal vez"],"actividadesInteres":["Deportivas","Culturales","Recreativas","Artisticas","Formativas o de capacitación","Voluntariado y proyección social"],"nivelesFormacion":["Bachiller","Técnico laboral","Técnico profesional","Tecnólogo","Profesional universitario","Especialización","Maestría","Doctorado","Posdoctorado","Otro"],"tiposInstitucion":["Colegio","Institución técnica o tecnológica","Institución de educación superior"],"estadosEstudio":["Graduado","En curso","Incompleto"],"ciudades":["Abejorral","Ábrego","Abriaquí","Acacías","Acandí","Acevedo","Achí","Agrado","Agua de Dios","Aguachica","Aguada","Aguadas","Aguazul","Agustín Codazzi","Aipe","Albán","Albania","Alcalá","Aldana","Alejandría","Algarrobo","Algeciras","Almaguer","Almeida","Alpujarra","Altamira","Alto Baudó","Altos del Rosario","Alvarado","Amagá","Amalfi","Ambalema","Anapoima","Ancuya","Andalucía","Andes","Angelópolis","Angostura","Anolaima","Anorí","Anserma","Ansermanuevo","Anzá","Anzoátegui","Apartadó","Apía","Apulo","Aquitania","Aracataca","Aranzazu","Aratoca","Arauca","Arauquita","Arbeláez","Arboleda","Arboledas","Arboletes","Arcabuco","Arenal","Argelia","Ariguaní","Arjona","Armenia","Armero","Arroyohondo","Astrea","Ataco","Atrato","Ayapel","Bagadó","Bahía Solano","Bajo Baudó","Balboa","Baranoa","Baraya","Barbacoas","Barbosa","Barichara","Barranca de Upía","Barrancabermeja","Barrancas","Barranco de Loba","Barrancominas","Barranquilla","Becerril","Belalcázar","Belén","Belén de los Andaquíes","Belén de Umbría","Bello","Belmira","Beltrán","Berbeo","Betania","Betéitiva","Betulia","Bituima","Boavita","Bochalema","Bogotá, D.C.","Bojacá","Bojayá","Bolívar","Bosconia","Boyacá","Briceño","Bucaramanga","Bucarasica","Buenaventura","Buenavista","Buenos Aires","Buesaco","Bugalagrande","Buriticá","Busbanzá","Cabrera","Cabuyaro","Cacahual","Cáceres","Cachipay","Cáchira","Cácota","Caicedo","Caicedonia","Caimito","Cajamarca","Cajibío","Cajicá","Calamar","Calarcá","Caldas","Caldono","California","Calima","Caloto","Campamento","Campo de la Cruz","Campoalegre","Campohermoso","Canalete","Candelaria","Cantagallo","Cañasgordas","Caparrapí","Capitanejo","Cáqueza","Caracolí","Caramanta","Carcasí","Carepa","Carmen de Apicalá","Carmen de Carupa","Carmen del Darién","Carolina","Cartagena de Indias","Cartagena del Chairá","Cartago","Carurú","Casabianca","Castilla la Nueva","Caucasia","Cepitá","Cereté","Cerinza","Cerrito","Cerro de San Antonio","Cértegui","Chachagüí","Chaguaní","Chalán","Chámeza","Chaparral","Charalá","Charta","Chía","Chigorodó","Chima","Chimá","Chimichagua","Chinácota","Chinavita","Chinchiná","Chinú","Chipaque","Chipatá","Chiquinquirá","Chíquiza","Chiriguaná","Chiscas","Chita","Chitagá","Chitaraque","Chivatá","Chivolo","Chivor","Choachí","Chocontá","Cicuco","Ciénaga","Ciénaga de Oro","Ciénega","Cimitarra","Circasia","Cisneros","Ciudad Bolívar","Clemencia","Cocorná","Coello","Cogua","Colombia","Colón","Colosó","Cómbita","Concepción","Concordia","Condoto","Confines","Consacá","Contadero","Contratación","Convención","Copacabana","Coper","Córdoba","Corinto","Coromoro","Corozal","Corrales","Cota","Cotorra","Covarachía","Coveñas","Coyaima","Cravo Norte","Cuaspud Carlosama","Cubará","Cubarral","Cucaita","Cucunubá","Cucutilla","Cuítiva","Cumaral","Cumaribo","Cumbal","Cumbitara","Cunday","Curillo","Curití","Curumaní","Dabeiba","Dagua","Dibulla","Distracción","Dolores","Donmatías","Dosquebradas","Duitama","Durania","Ebéjico","El Águila","El Bagre","El Banco","El Cairo","El Calvario","El Cantón del San Pablo","El Carmen","El Carmen de Atrato","El Carmen de Bolívar","El Carmen de Chucurí","El Carmen de Viboral","El Castillo","El Cerrito","El Charco","El Cocuy","El Colegio","El Copey","El Doncello","El Dorado","El Dovio","El Encanto","El Espino","El Guacamayo","El Guamo","El Litoral del San Juan","El Molino","El Paso","El Paujíl","El Peñol","El Peñón","El Piñón","El Playón","El Retén","El Retorno","El Roble","El Rosal","El Rosario","El Santuario","El Tablón de Gómez","El Tambo","El Tarra","El Zulia","Elías","Encino","Enciso","Entrerríos","Envigado","Espinal","Facatativá","Falan","Filadelfia","Filandia","Firavitoba","Flandes","Florencia","Floresta","Florián","Florida","Floridablanca","Fómeque","Fonseca","Fortul","Fosca","Francisco Pizarro","Fredonia","Fresno","Frontino","Fuente de Oro","Fundación","Funes","Funza","Fúquene","Fusagasugá","Gachalá","Gachancipá","Gachantivá","Gachetá","Galán","Galapa","Galeras","Gama","Gamarra","Gámbita","Gámeza","Garagoa","Garzón","Génova","Gigante","Ginebra","Giraldo","Girardot","Girardota","Girón","Gómez Plata","González","Gramalote","Granada","Guaca","Guacamayas","Guacarí","Guachené","Guachetá","Guachucal","Guadalajara de Buga","Guadalupe","Guaduas","Guaitarilla","Gualmatán","Guamal","Guamo","Guapi","Guapotá","Guaranda","Guarne","Guasca","Guatapé","Guataquí","Guatavita","Guateque","Guática","Guavatá","Guayabal de Síquima","Guayabetal","Guayatá","Güepsa","Güicán de la Sierra","Gutiérrez","Hacarí","Hatillo de Loba","Hato","Hato Corozal","Hatonuevo","Heliconia","Herrán","Herveo","Hispania","Hobo","Honda","Ibagué","Icononzo","Iles","Imués","Inírida","Inzá","Ipiales","Íquira","Isnos","Istmina","Itagüí","Ituango","Iza","Jambaló","Jamundí","Jardín","Jenesano","Jericó","Jerusalén","Jesús María","Jordán","Juan de Acosta","Junín","Juradó","La Apartada","La Argentina","La Belleza","La Calera","La Capilla","La Ceja","La Celia","La Chorrera","La Cruz","La Cumbre","La Dorada","La Esperanza","La Estrella","La Florida","La Gloria","La Guadalupe","La Jagua de Ibirico","La Jagua del Pilar","La Llanada","La Macarena","La Merced","La Mesa","La Montañita","La Palma","La Paz","La Pedrera","La Peña","La Pintada","La Plata","La Playa","La Primavera","La Salina","La Sierra","La Tebaida","La Tola","La Unión","La Uvita","La Vega","La Victoria","La Virginia","Labateca","Labranzagrande","Landázuri","Lebrija","Leiva","Lejanías","Lenguazaque","Lérida","Leticia","Líbano","Liborina","Linares","Lloró","López de Micay","Lorica","Los Andes","Los Córdobas","Los Palmitos","Los Patios","Los Santos","Lourdes","Luruaco","Macanal","Macaravita","Maceo","Machetá","Madrid","Magangué","Magüí","Mahates","Maicao","Majagual","Málaga","Malambo","Mallama","Manatí","Manaure","Manaure Balcón del Cesar","Maní","Manizales","Manta","Manzanares","Mapiripán","Margarita","María la Baja","Marinilla","Maripí","Marmato","Marquetalia","Marsella","Marulanda","Matanza","Medellín","Medina","Medio Atrato","Medio Baudó","Medio San Juan","Melgar","Mercaderes","Mesetas","Milán","Miraflores","Miranda","Mirití - Paraná","Mistrató","Mitú","Mocoa","Mogotes","Molagavita","Momil","Mongua","Monguí","Moniquirá","Montebello","Montecristo","Montelíbano","Montenegro","Montería","Monterrey","Moñitos","Morales","Morelia","Morichal","Morroa","Mosquera","Motavita","Murillo","Murindó","Mutatá","Mutiscua","Muzo","Nariño","Nátaga","Natagaima","Nechí","Necoclí","Neira","Neiva","Nemocón","Nilo","Nimaima","Nobsa","Nocaima","Norcasia","Norosí","Nóvita","Nueva Granada","Nuevo Belén de Bajirá","Nuevo Colón","Nunchía","Nuquí","Obando","Ocamonte","Ocaña","Oiba","Oicatá","Olaya","Olaya Herrera","Onzaga","Oporapa","Orito","Orocué","Ortega","Ospina","Otanche","Ovejas","Pachavita","Pacho","Pacoa","Pácora","Padilla","Páez","Paicol","Pailitas","Paime","Paipa","Pajarito","Palermo","Palestina","Palmar","Palmar de Varela","Palmas del Socorro","Palmira","Palmito","Palocabildo","Pamplona","Pamplonita","Pana Pana","Pandi","Panqueba","Papunahua","Páramo","Paratebueno","Pasca","Pasto","Patía","Pauna","Paya","Paz de Ariporo","Paz de Río","Pedraza","Pelaya","Pensilvania","Peñol","Peque","Pereira","Pesca","Piamonte","Piedecuesta","Piedras","Piendamó - Tunía","Pijao","Pijiño del Carmen","Pinchote","Pinillos","Piojó","Pisba","Pital","Pitalito","Pivijay","Planadas","Planeta Rica","Plato","Policarpa","Polonuevo","Ponedera","Popayán","Pore","Potosí","Pradera","Prado","Providencia","Pueblo Bello","Pueblo Nuevo","Pueblo Rico","Pueblorrico","Puebloviejo","Puente Nacional","Puerres","Puerto Alegría","Puerto Arica","Puerto Asís","Puerto Berrío","Puerto Boyacá","Puerto Caicedo","Puerto Carreño","Puerto Colombia","Puerto Concordia","Puerto Escondido","Puerto Gaitán","Puerto Guzmán","Puerto Leguízamo","Puerto Libertador","Puerto Lleras","Puerto López","Puerto Nare","Puerto Nariño","Puerto Parra","Puerto Rico","Puerto Rondón","Puerto Salgar","Puerto Santander","Puerto Tejada","Puerto Triunfo","Puerto Wilches","Pulí","Pupiales","Puracé","Purificación","Purísima de la Concepción","Quebradanegra","Quetame","Quibdó","Quimbaya","Quinchía","Quípama","Quipile","Ragonvalia","Ramiriquí","Ráquira","Recetor","Regidor","Remedios","Remolino","Repelón","Restrepo","Retiro","Ricaurte","Río de Oro","Río Iró","Río Quito","Río Viejo","Rioblanco","Riofrío","Riohacha","Rionegro","Riosucio","Risaralda","Rivera","Roberto Payán","Roldanillo","Roncesvalles","Rondón","Rosas","Rovira","Sabana de Torres","Sabanagrande","Sabanalarga","Sabanas de San Ángel","Sabaneta","Saboyá","Sácama","Sáchica","Sahagún","Saladoblanco","Salamina","Salazar","Saldaña","Salento","Salgar","Samacá","Samaná","Samaniego","Sampués","San Agustín","San Alberto","San Andrés","San Andrés de Cuerquía","San Andrés de Sotavento","San Andrés de Tumaco","San Antero","San Antonio","San Antonio del Tequendama","San Benito","San Benito Abad","San Bernardo","San Bernardo del Viento","San Calixto","San Carlos","San Carlos de Guaroa","San Cayetano","San Cristóbal","San Diego","San Eduardo","San Estanislao","San Felipe","San Fernando","San Francisco","San Gil","San Jacinto","San Jacinto del Cauca","San Jerónimo","San Joaquín","San José","San José de Cúcuta","San José de la Montaña","San José de Miranda","San José de Pare","San José de Toluviejo","San José de Uré","San José del Fragua","San José del Guaviare","San José del Palmar","San Juan de Arama","San Juan de Betulia","San Juan de Rioseco","San Juan de Urabá","San Juan del Cesar","San Juan Nepomuceno","San Juanito","San Lorenzo","San Luis","San Luis de Gaceno","San Luis de Palenque","San Luis de Sincé","San Marcos","San Martín","San Martín de Loba","San Mateo","San Miguel","San Miguel de Sema","San Onofre","San Pablo","San Pablo de Borbur","San Pedro","San Pedro de Cartago","San Pedro de los Milagros","San Pedro de Urabá","San Pelayo","San Rafael","San Roque","San Sebastián","San Sebastián de Buenavista","San Sebastián de Mariquita","San Vicente de Chucurí","San Vicente del Caguán","San Vicente Ferrer","San Zenón","Sandoná","Santa Ana","Santa Bárbara","Santa Bárbara de Pinto","Santa Catalina","Santa Cruz de Mompox","Santa Fé de Antioquia","Santa Helena del Opón","Santa Isabel","Santa Lucía","Santa María","Santa Marta","Santa Rosa","Santa Rosa de Cabal","Santa Rosa de Osos","Santa Rosa de Viterbo","Santa Rosa del Sur","Santa Rosalía","Santa Sofía","Santacruz","Santana","Santander de Quilichao","Santiago","Santiago de Cali","Santiago de Tolú","Santo Domingo","Santo Tomás","Santuario","Sapuyes","Saravena","Sardinata","Sasaima","Sativanorte","Sativasur","Segovia","Sesquilé","Sevilla","Siachoque","Sibaté","Sibundoy","Silos","Silvania","Silvia","Simacota","Simijaca","Simití","Sincelejo","Sipí","Sitionuevo","Soacha","Soatá","Socha","Socorro","Socotá","Sogamoso","Solano","Soledad","Solita","Somondoco","Sonsón","Sopetrán","Soplaviento","Sopó","Sora","Soracá","Sotaquirá","Sotará Paispamba","Suaita","Suan","Suárez","Suaza","Subachoque","Sucre","Suesca","Supatá","Supía","Suratá","Susa","Susacón","Sutamarchán","Sutatausa","Sutatenza","Tabio","Tadó","Talaigua Nuevo","Tamalameque","Támara","Tame","Támesis","Taminango","Tangua","Taraira","Tarapacá","Tarazá","Tarqui","Tarso","Tasco","Tauramena","Tausa","Tello","Tena","Tenerife","Tenjo","Tenza","Teorama","Teruel","Tesalia","Tibacuy","Tibaná","Tibasosa","Tibirita","Tibú","Tierralta","Timaná","Timbío","Timbiquí","Tinjacá","Tipacoque","Tiquisio","Titiribí","Toca","Tocaima","Tocancipá","Togüí","Toledo","Tona","Tópaga","Topaipí","Toribío","Toro","Tota","Totoró","Trinidad","Trujillo","Tubará","Tuchín","Tuluá","Tunja","Tununguá","Túquerres","Turbaco","Turbana","Turbo","Turmequé","Tuta","Tutazá","Ubalá","Ubaque","Ulloa","Úmbita","Une","Unguía","Unión Panamericana","Uramita","Uribe","Uribia","Urrao","Urumita","Usiacurí","Útica","Valdivia","Valencia","Valle de San José","Valle de San Juan","Valle del Guamuez","Valledupar","Valparaíso","Vegachí","Vélez","Venadillo","Venecia","Ventaquemada","Vergara","Versalles","Vetas","Vianí","Victoria","Vigía del Fuerte","Vijes","Villa Caro","Villa de Leyva","Villa de San Diego de Ubaté","Villa del Rosario","Villa Rica","Villagarzón","Villagómez","Villahermosa","Villamaría","Villanueva","Villapinzón","Villarrica","Villavicencio","Villavieja","Villeta","Viotá","Viracachá","Vistahermosa","Viterbo","Yacopí","Yacuanquer","Yaguará","Yalí","Yarumal","Yavaraté","Yolombó","Yondó","Yopal","Yotoco","Yumbo","Zambrano","Zapatoca","Zapayán","Zaragoza","Zarzal","Zetaquira","Zipacón","Zipaquirá","Zona Bananera"],"paises":["Colombia","Venezuela","Ecuador","Perú","Brasil","Panama","Mexico","Argentina","Chile","España","Estados Unidos","Otro"]},"limites":{"maxHijos":15,"maxContactos":1,"maxFormacion":15,"edadMinimaPersona":15,"edadMaximaPersona":100,"edadMaximaHijo":60,"minDigitosCelular":10,"maxDigitosCelular":10,"minLongitudDocumento":4,"maxLongitudDocumento":20,"maxLongitudTexto":500,"minMotivoAnulacion":10,"maxMotivoAnulacion":300,"maxFilasExportacion":3000,"diasCorreccion":7,"minutosCodigo":10,"intentosCodigo":5,"codigosPorHora":3,"minutosSesionCorreccion":60},"institucionPropia":"Corporación Universitaria del Meta - UNIMETA","dominiosCorreo":["unimeta.edu.co"],"aliasCiudades":{"Bogota":"Bogotá, D.C.","Cali":"Santiago de Cali","Cartagena":"Cartagena de Indias","Cucuta":"San José de Cúcuta"},"sitekey":"0x4AAAAAAFbqNqVSHokfTnhb"};</script>
 <script>
 /* ============================================================
    JavaScript.html
@@ -4490,6 +4676,11 @@ var formacion = [];
 var secuencia = 0;
 
 var OPCION_OTRA_UNIDAD = '__OTRA__';
+
+// Correccion de la formacion academica que habilita Talento Humano.
+var DIRECCION_CORRECCION = '#corregir-formacion';
+var modoCorreccion = false;
+var sesionCorreccion = '';
 
 /* ------------------------------------------------------------
    ATAJOS
@@ -4598,8 +4789,11 @@ document.addEventListener('DOMContentLoaded', function () {
     verificarEnSegundoPlano().catch(function () {});
   });
   // La direccion terminada en #talento-humano abre el panel sin cargar el formulario.
-  if (PanelTH.pedidoEnLaDireccion()) PanelTH.abrir();
-  else arrancarFormulario();
+  if (PanelTH.pedidoEnLaDireccion()) { PanelTH.abrir(); return; }
+  // Y la terminada en #corregir-formacion, solo la correccion de los estudios.
+  modoCorreccion = location.hash === DIRECCION_CORRECCION;
+  if (modoCorreccion) document.body.classList.add('modo-correccion');
+  arrancarFormulario();
 });
 
 function solicitarServidor(accion, argumento) {
@@ -4646,7 +4840,9 @@ function arrancarAlInstante(publica) {
     $('zonaProgreso').hidden = false;
     PanelTH.trasArranque();
   }
-  verificarEnSegundoPlano().catch(function () {});
+  // La correccion no usa el pase ni el organigrama, y su propia verificacion
+  // de Cloudflare chocaria con esta (solo hay un recuadro a la vez).
+  if (!modoCorreccion) verificarEnSegundoPlano().catch(function () {});
 }
 
 /** Una sola verificacion a la vez; si falla, se puede reintentar. */
@@ -4774,6 +4970,7 @@ function iniciar(datos) {
 
   pintarRiel();
   irAPaso(1, true);
+  if (modoCorreccion) prepararCorreccion();
 
   $('capaCarga').classList.remove('visible');
 }
@@ -5283,7 +5480,8 @@ function conectarEventos() {
     if (e.defaultPrevented) return;
     if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
       e.preventDefault();
-      if (pasoActual < TOTAL_PASOS) avanzar();
+      // En la correccion no hay paso siguiente: se guarda con su boton.
+      if (!modoCorreccion && pasoActual < TOTAL_PASOS) avanzar();
     }
   });
 
@@ -6638,14 +6836,19 @@ function recolectar() {
     actividadesInteres: marcados('actividadesInteres'),
 
     nivelFormacionMaximo: valorDe('nivelFormacionMaximo'),
-    formacion: formacion.map(function (f) {
-      return {
-        nivel: f.nivel, tipoInstitucion: f.tipoInstitucion, institucion: f.institucion,
-        titulo: f.titulo, estado: f.estado, fechaGrado: f.fechaGrado,
-        ciudad: f.ciudad, pais: f.pais
-      };
-    })
+    formacion: formacionParaEnviar()
   };
+}
+
+/** Los estudios sin el id interno del DOM. Los usa tambien la correccion. */
+function formacionParaEnviar() {
+  return formacion.map(function (f) {
+    return {
+      nivel: f.nivel, tipoInstitucion: f.tipoInstitucion, institucion: f.institucion,
+      titulo: f.titulo, estado: f.estado, fechaGrado: f.fechaGrado,
+      ciudad: f.ciudad, pais: f.pais
+    };
+  });
 }
 
 /* ------------------------------------------------------------
@@ -6816,6 +7019,7 @@ function formatearFecha(iso) {
    ------------------------------------------------------------ */
 
 function hayDatos() {
+  if (modoCorreccion) return !!sesionCorreccion;
   return !!(valorDe('numDocumento') || valorDe('nombres'));
 }
 
@@ -7026,6 +7230,202 @@ function mostrarErrorGeneral(mensaje) {
   el.style.display = '';
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   anunciar(mensaje);
+}
+
+/* ------------------------------------------------------------
+   CORRECCION DE LA FORMACION ACADEMICA
+   ------------------------------------------------------------
+   Talento Humano la habilita desde la ficha del panel y le envia a la
+   persona la direccion terminada en #corregir-formacion. Con su documento
+   y el codigo que le llega al correo ve solo el paso 9, con los estudios
+   que ya habia registrado; al guardar se reemplaza unicamente esa seccion.
+   Las reglas y la seguridad estan en Correccion.gs.
+   ------------------------------------------------------------ */
+
+var correccionConectada = false;
+var ocupadoCorreccion = false;
+
+function prepararCorreccion() {
+  $('correccionAcceso').hidden = false;
+  if (!correccionConectada) {
+    correccionConectada = true;
+    $('btnCorreccionCodigo').addEventListener('click', solicitarCodigoCorreccion);
+    $('btnCorreccionVerificar').addEventListener('click', verificarCodigoCorreccion);
+    $('btnCorreccionOtroCodigo').addEventListener('click', function () {
+      errorCorreccion('');
+      $('correccionCodigo').value = '';
+      $('correccionPasoCodigo').hidden = true;
+      $('correccionPasoDocumento').hidden = false;
+      $('correccionDocumento').focus();
+    });
+    $('btnCorreccionGuardar').addEventListener('click', guardarCorreccion);
+    $('btnCorreccionCancelar').addEventListener('click', cancelar);
+    $('correccionDocumento').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); solicitarCodigoCorreccion(); }
+    });
+    $('correccionCodigo').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); verificarCodigoCorreccion(); }
+    });
+    $('correccionCodigo').addEventListener('input', function () {
+      var limpio = soloDigitos(this.value).slice(0, 6);
+      if (limpio !== this.value) this.value = limpio;
+    });
+  }
+  $('correccionDocumento').focus();
+}
+
+function errorCorreccion(mensaje) {
+  var el = $('correccionError');
+  el.textContent = mensaje;
+  el.hidden = !mensaje;
+  if (mensaje) anunciar(mensaje);
+}
+
+function mensajeDe(e) {
+  return (e && (e.message || e.mensaje)) || SIN_CONEXION;
+}
+
+function documentoCorreccion() {
+  return valorDe('correccionDocumento').replace(/[^0-9A-Za-z]/g, '');
+}
+
+/** Bloquea el boton mientras dura la solicitud y lo devuelve como estaba. */
+function conBotonOcupado(id, textoOcupado, promesa) {
+  var boton = $(id), texto = boton.textContent;
+  ocupadoCorreccion = true;
+  boton.disabled = true;
+  boton.textContent = textoOcupado;
+  return promesa().catch(function (e) {
+    errorCorreccion(mensajeDe(e));
+  }).then(function () {
+    ocupadoCorreccion = false;
+    boton.disabled = false;
+    boton.textContent = texto;
+  });
+}
+
+function solicitarCodigoCorreccion() {
+  if (ocupadoCorreccion) return;
+  errorCorreccion('');
+  var doc = documentoCorreccion();
+  if (doc.length < CONFIG.limites.minLongitudDocumento || doc.length > CONFIG.limites.maxLongitudDocumento) {
+    marcarError('correccionDocumento', 'Digite un número de documento válido.');
+    $('correccionDocumento').focus();
+    return;
+  }
+  conBotonOcupado('btnCorreccionCodigo', 'Enviando código…', function () {
+    var conClave = configuracionAcceso
+      ? Promise.resolve()
+      : solicitarServidor('obtenerConfiguracionAcceso').then(function (d) { configuracionAcceso = d; });
+    return conClave.then(function () {
+      return verificarVisitante('correccion', $('turnstileCorreccion'));
+    }).then(function (token) {
+      return solicitarServidor('correccionSolicitarCodigo', { documento: doc, turnstileToken: token });
+    }).then(function (r) {
+      $('correccionDestino').textContent = 'Le enviamos un código de 6 dígitos a ' + r.correo +
+        '. Vence en ' + r.minutos + ' minutos. Si no lo ve, revise la carpeta de correo no deseado.';
+      $('correccionPasoDocumento').hidden = true;
+      $('correccionPasoCodigo').hidden = false;
+      $('correccionCodigo').value = '';
+      anunciar('Código enviado a ' + r.correo + '.');
+      $('correccionCodigo').focus();
+    });
+  });
+}
+
+function verificarCodigoCorreccion() {
+  if (ocupadoCorreccion) return;
+  errorCorreccion('');
+  var codigo = soloDigitos(valorDe('correccionCodigo'));
+  if (codigo.length !== 6) {
+    marcarError('correccionCodigo', 'Escriba el código de 6 dígitos.');
+    $('correccionCodigo').focus();
+    return;
+  }
+  conBotonOcupado('btnCorreccionVerificar', 'Verificando…', function () {
+    return solicitarServidor('correccionVerificarCodigo',
+      { documento: documentoCorreccion(), codigo: codigo }).then(abrirCorreccion);
+  });
+}
+
+/** Valor de la hoja si sigue en el catalogo; si no, que la persona lo elija de nuevo. */
+function enCatalogo(valor, catalogo) {
+  return (CONFIG.catalogos[catalogo] || []).indexOf(valor) !== -1 ? valor : '';
+}
+
+/** Muestra el paso 9 con lo que la persona ya tenia registrado. */
+function abrirCorreccion(r) {
+  sesionCorreccion = r.sesion;
+  formacion = (r.formacion || []).map(function (f) {
+    return {
+      uid: ++secuencia,
+      nivel: enCatalogo(f.nivel, 'nivelesFormacion'),
+      tipoInstitucion: enCatalogo(f.tipoInstitucion, 'tiposInstitucion'),
+      institucion: f.institucion || '', titulo: f.titulo || '',
+      estado: enCatalogo(f.estado, 'estadosEstudio'),
+      fechaGrado: f.fechaGrado || '', ciudad: f.ciudad || '',
+      pais: enCatalogo(f.pais, 'paises')
+    };
+  });
+  if (formacion.length) pintarFormacion(); else agregarFormacion();
+  $('nivelFormacionMaximo').value = enCatalogo(r.nivelFormacionMaximo, 'nivelesFormacion');
+  sincronizarSelectsPersonalizados();
+
+  $('correccionAviso').textContent = (r.nombre ? r.nombre + ', e' : 'E') + 'stos son los estudios que ' +
+    'registró. Agregue los que le faltan (por ejemplo, su título de bachiller) con «Agregar formación ' +
+    'académica», corrija lo necesario y pulse «Guardar formación académica». Solo se actualiza esta sección.';
+  $('correccionAviso').hidden = false;
+  $('correccionAcceso').hidden = true;
+  document.body.classList.add('correccion-abierta');
+  irAPaso(9, true);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  anunciar('Formación académica lista para corregir.');
+  $('btnAgregarFormacion').focus({ preventScroll: true });
+}
+
+function guardarCorreccion() {
+  if (enviando || !sesionCorreccion) return;
+  if (!validarPaso(9)) return;
+  var n = formacion.length;
+  mostrarConfirmacion({
+    titulo: 'Guardar formación académica',
+    mensaje: 'La formación académica de su registro quedará con ' + (n === 1 ? 'el estudio' : 'los ' + n +
+      ' estudios') + ' que ve en pantalla. Esta corrección se puede guardar una sola vez.',
+    textoAceptar: 'Guardar'
+  }, function () {
+    enviando = true;
+    $('btnCorreccionGuardar').disabled = true;
+    $('avisoError').style.display = 'none';
+    $('textoCarga').textContent = 'Guardando su formación académica...';
+    $('capaCarga').classList.add('visible');
+    solicitarServidor('correccionGuardar', {
+      sesion: sesionCorreccion,
+      nivelFormacionMaximo: valorDe('nivelFormacionMaximo'),
+      formacion: formacionParaEnviar()
+    }).then(function (r) {
+      $('capaCarga').classList.remove('visible');
+      sesionCorreccion = '';
+      document.body.classList.remove('correccion-abierta');
+      $('correccionPasoDocumento').hidden = true;
+      $('correccionPasoCodigo').hidden = true;
+      errorCorreccion('');
+      $('correccionHechoTexto').textContent = 'Su formación académica quedó actualizada con ' +
+        r.estudios + (r.estudios === 1 ? ' estudio' : ' estudios') + '. Le enviamos una constancia ' +
+        'a su correo. El resto de su registro no cambió.';
+      $('correccionRadicado').textContent = r.radicado || '—';
+      $('correccionFecha').textContent = r.fecha || '—';
+      $('correccionHecho').hidden = false;
+      $('correccionAcceso').hidden = false;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      $('tituloCorreccion').focus({ preventScroll: true });
+      anunciar('Formación académica guardada correctamente.');
+    }, function (e) {
+      $('capaCarga').classList.remove('visible');
+      enviando = false;
+      $('btnCorreccionGuardar').disabled = false;
+      mostrarErrorGeneral(mensajeDe(e));
+    });
+  });
 }
 </script>
 
